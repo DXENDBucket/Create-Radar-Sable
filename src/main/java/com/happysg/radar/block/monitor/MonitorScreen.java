@@ -430,16 +430,26 @@ public class MonitorScreen extends Screen {
 
             String label = getLabelForTrack(track, monitor);
             if (label != null && !label.isBlank()) {
-                renderLabel(gg, label, px, pz + Math.round(8 * uiScale), alpha);
+                renderLabel(gg, label, px, pz + Math.round(8 * uiScale), alpha,RadarConfig.client().monitorTextScale.getF());
             }
         }
     }
 
-    private void renderLabel(GuiGraphics gg, String text, int x, int y, float alpha) {
+    private void renderLabel(GuiGraphics gg, String text, int x, int y, float alpha, float scale) {
         Font f = Minecraft.getInstance().font;
         int a = Mth.clamp((int) (alpha * 255f), 0, 255);
         int argb = (a << 24) | 0xFFFFFF;
-        gg.drawCenteredString(f, text, x, y, argb);
+
+        gg.pose().pushPose();
+
+        // Scale around the text position
+        gg.pose().translate(x, y, 0);
+        gg.pose().scale(scale, scale, 1f);
+
+        // Since we translated, draw at 0,0
+        gg.drawCenteredString(f, text, 0, 0, argb);
+
+        gg.pose().popPose();
     }
 
     private void updateHoverFromMouse(MonitorBlockEntity monitor, IRadar radar, int mouseX, int mouseY) {

@@ -1,6 +1,7 @@
 package com.happysg.radar.block.guidance;
 
 import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
+import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -31,8 +32,9 @@ public class RadarGuidanceBlockEntity extends GuidanceBlockEntity {
 
     private void checkForTarget(Level server) {
         if (monitorPos == null) return;
-        if (server.getBlockEntity(monitorPos) instanceof MonitorBlockEntity monitor) {
-            target = monitor.getController().getTargetPos(TargetingConfig.DEFAULT);
+        if (server.getBlockEntity(monitorPos) instanceof NetworkFiltererBlockEntity monitor) {
+            if (monitor.activeTrackCache == null) return;
+            target = monitor.activeTrackCache.getPosition();
         }
     }
 
@@ -74,8 +76,8 @@ public class RadarGuidanceBlockEntity extends GuidanceBlockEntity {
     @Override
     public void load(CompoundTag pTag) {
         super.load(pTag);
-        if (pTag.contains("monitorPos")) {
-            monitorPos = BlockPos.of(pTag.getLong("monitorPos"));
+        if (pTag.contains("filtererPos")) {
+            monitorPos = BlockPos.of(pTag.getLong("filtererPos"));
         }
         if (pTag.contains("target")) {
             int[] targetArray = pTag.getIntArray("target");
@@ -87,7 +89,7 @@ public class RadarGuidanceBlockEntity extends GuidanceBlockEntity {
     protected void saveAdditional(CompoundTag pTag) {
         super.saveAdditional(pTag);
         if (monitorPos != null) {
-            pTag.putLong("monitorPos", monitorPos.asLong());
+            pTag.putLong("filtererPos", monitorPos.asLong());
         }
         if (target != null) {
             pTag.putIntArray("target", new int[]{(int) target.x, (int) target.y, (int) target.z});

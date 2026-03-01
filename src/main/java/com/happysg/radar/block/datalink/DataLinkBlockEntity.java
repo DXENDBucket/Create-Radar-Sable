@@ -1,6 +1,5 @@
 package com.happysg.radar.block.datalink;
 
-import com.happysg.radar.block.datalink.screens.AbstractDataLinkScreen;
 import com.happysg.radar.registry.AllDataBehaviors;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -138,9 +137,7 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
             sourceConfig = data.copy();
     }
 
-    Optional<AbstractDataLinkScreen> getScreen() {
-        return activeSource == null ? Optional.empty() : Optional.ofNullable(activeSource.getScreen(this));
-    }
+
 
     public void target(BlockPos targetPosition) {
         if (!(level instanceof ServerLevel sl)) {

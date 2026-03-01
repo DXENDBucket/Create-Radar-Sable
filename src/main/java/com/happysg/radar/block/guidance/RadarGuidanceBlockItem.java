@@ -1,6 +1,7 @@
 package com.happysg.radar.block.guidance;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import com.happysg.radar.compat.cbcmw.CBCMWCompatRegister;
 import net.minecraft.core.BlockPos;
@@ -26,9 +27,9 @@ public class RadarGuidanceBlockItem extends BlockItem {
     public InteractionResult useOn(UseOnContext pContext) {
         BlockPos clickedPos = pContext.getClickedPos();
         ItemStack itemStack = pContext.getItemInHand();
-        if (pContext.getLevel().getBlockEntity(clickedPos) instanceof MonitorBlockEntity blockEntity) {
+        if (pContext.getLevel().getBlockEntity(clickedPos) instanceof NetworkFiltererBlockEntity blockEntity) {
             CompoundTag tag = new CompoundTag();
-            tag.putLong("monitorPos", blockEntity.getController().getBlockPos().asLong());
+            tag.putLong("filtererPos", blockEntity.getBlockPos().asLong());
             BlockItem.setBlockEntityData(itemStack, CBCMWCompatRegister.RADAR_GUIDANCE_BLOCK_ENTITY.get(), tag);
             return InteractionResult.SUCCESS;
         }
@@ -38,8 +39,8 @@ public class RadarGuidanceBlockItem extends BlockItem {
     @Override
     public void appendHoverText(ItemStack pStack, @Nullable Level pLevel, List<Component> pTooltip, TooltipFlag pFlag) {
         CompoundTag tag = BlockItem.getBlockEntityData(pStack);
-        if (tag != null && tag.contains("monitorPos")) {
-            BlockPos monitorPos = BlockPos.of(tag.getLong("monitorPos"));
+        if (tag != null && tag.contains("filtererPos")) {
+            BlockPos monitorPos = BlockPos.of(tag.getLong("filtererPos"));
             pTooltip.add(Component.translatable(CreateRadar.MODID + ".guided_fuze.linked_monitor", monitorPos));
         } else {
             pTooltip.add(Component.translatable(CreateRadar.MODID + ".guided_fuze.no_monitor"));

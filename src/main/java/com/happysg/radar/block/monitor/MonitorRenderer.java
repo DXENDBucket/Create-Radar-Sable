@@ -65,28 +65,29 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
 
     @Override
     protected void renderSafe(MonitorBlockEntity blockEntity, float partialTicks, PoseStack ms, MultiBufferSource bufferSource, int light, int overlay) {
-        // Skip rendering if this isn't the controller block
-        if (!blockEntity.isLinked()||!blockEntity.isController() ) {
-            return;
-        }
-
-        super.renderSafe(blockEntity, partialTicks, ms, bufferSource, light, overlay);
-
-
-
-        // Set up transformation matrix for the monitor face
-        setupMonitorTransform(ms, blockEntity.getBlockState().getValue(MonitorBlock.FACING));
-
-        // Get radar and render if it's running
-        blockEntity.getRadar().ifPresent(radar -> {
-            if (!radar.isRunning()) {
+        if(!RadarConfig.client().disableMonitorRendering.get()) {
+            if (!blockEntity.isLinked() || !blockEntity.isController()) {
                 return;
             }
 
-            // Render all radar display elements
-            renderRadarDisplay(radar, blockEntity, ms, bufferSource, partialTicks);
-        });
+            super.renderSafe(blockEntity, partialTicks, ms, bufferSource, light, overlay);
+
+            // Set up transformation matrix for the monitor face
+            setupMonitorTransform(ms, blockEntity.getBlockState().getValue(MonitorBlock.FACING));
+
+            // Get radar and render if it's running
+            blockEntity.getRadar().ifPresent(radar -> {
+                if (!radar.isRunning()) {
+                    return;
+                }
+
+                // Render all radar display elements
+                renderRadarDisplay(radar, blockEntity, ms, bufferSource, partialTicks);
+            });
+        }
     }
+
+
 
     /**
      * Sets up the transformation matrix to properly orient the display on the monitor face

@@ -814,10 +814,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
 
     }
 
-    @Override
-    protected void copySequenceContextFrom(KineticBlockEntity sourceBE) {
 
-    }
 
 
     private static Vec3 forwardHoriz(Direction facing) {

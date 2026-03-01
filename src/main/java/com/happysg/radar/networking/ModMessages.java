@@ -1,7 +1,9 @@
 package com.happysg.radar.networking;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.networking.packets.IDRecordRequestPacket;
 import com.happysg.radar.networking.packets.IDRecordPacket;
+import com.happysg.radar.networking.packets.IDRecordSyncPacket;
 import com.simibubi.create.foundation.networking.SimplePacketBase;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -32,6 +34,8 @@ public class ModMessages {
                 .simpleChannel();
 
         c2s(IDRecordPacket.class);
+        c2s(IDRecordRequestPacket.class);
+        s2c(IDRecordSyncPacket.class);
     }
 
     private static <T extends SimplePacketBase> void s2c(Class<T> clazz) {

@@ -1,21 +1,17 @@
 package com.happysg.radar.ponder;
 
-import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererRenderer;
 import com.happysg.radar.registry.ModBlocks;
 
-import net.createmod.catnip.math.Pointing;
 import net.createmod.ponder.api.PonderPalette;
 import net.createmod.ponder.api.element.ElementLink;
 import net.createmod.ponder.api.element.WorldSectionElement;
 import net.createmod.ponder.api.scene.SceneBuilder;
 import net.createmod.ponder.api.scene.SceneBuildingUtil;
 import net.createmod.ponder.api.scene.Selection;
-import net.createmod.ponder.foundation.element.InputWindowElement;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.valkyrienskies.core.impl.shadow.Bl;
 
 public class PonderScenes {
     public static void radarContraption(SceneBuilder scene, SceneBuildingUtil util) {
