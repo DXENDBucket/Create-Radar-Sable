@@ -1,6 +1,7 @@
 package com.happysg.radar.block.arad.rwr;
 
 import com.happysg.radar.block.arad.aradnetworks.RadarContactRegistry;
+import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.registry.ModSounds;
 import com.mojang.logging.LogUtils;
@@ -63,11 +64,10 @@ public class RadarWarningReceiverBlockEntity extends SmartBlockEntity {
         }
 
         long key = ship.getId();
-
+        if(!Mods.VALKYRIENSKIES.isLoaded()) return;
         boolean locked = RadarContactRegistry.isLocked(sl, key);
-        if(locked) LogUtils.getLogger().warn("locked");
+        if (locked) LogUtils.getLogger().warn("locked");
         boolean inRange = RadarContactRegistry.isInRange(sl, key);
-
         // locked always wins and completely ignores the in-range sound
         if (locked) {
             wasInRange = inRange;
