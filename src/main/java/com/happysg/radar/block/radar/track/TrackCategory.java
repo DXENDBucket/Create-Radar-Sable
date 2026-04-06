@@ -3,6 +3,7 @@ package com.happysg.radar.block.radar.track;
 import com.happysg.radar.compat.Mods;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.monster.Enemy;
@@ -25,6 +26,15 @@ public enum TrackCategory {
 
 
     public static TrackCategory get(Entity entity) {
+            EntityType<?> type = entity.getType();
+            if (type.is(RadarEntityTypeTags.RADAR_PLAYER)) return PLAYER;
+            if (type.is(RadarEntityTypeTags.RADAR_HOSTILE)) return HOSTILE;
+            if (type.is(RadarEntityTypeTags.RADAR_ANIMAL)) return ANIMAL;
+            if (type.is(RadarEntityTypeTags.RADAR_MOB)) return MOB;
+            if (type.is(RadarEntityTypeTags.RADAR_PROJECTILE)) return PROJECTILE;
+            if (type.is(RadarEntityTypeTags.RADAR_CONTRAPTION)) return CONTRAPTION;
+            if (type.is(RadarEntityTypeTags.RADAR_ITEM)) return ITEM;
+
             if (entity instanceof Player) return PLAYER;
             if (Mods.VALKYRIENSKIES.isLoaded() && entity instanceof Ship) return VS2;
             if (entity instanceof Enemy) return HOSTILE;

@@ -9,6 +9,10 @@ import dan200.computercraft.api.peripheral.GenericPeripheral;
 import java.util.*;
 
 public class MonitorPeripheral implements GenericPeripheral {
+    @Override
+    public String id() {
+        return CreateRadar.asResource("monitor").toString();
+    }
     @LuaFunction(mainThread = true)
     public static String getSelectedTrackId(MonitorBlockEntity monitorEntity){
         MonitorBlockEntity controller = monitorEntity.getController();
@@ -87,8 +91,5 @@ public class MonitorPeripheral implements GenericPeripheral {
         return out;
     }
 
-    @Override
-    public String id() {
-        return CreateRadar.asResource("monitor").toString();
-    }
+
 }
