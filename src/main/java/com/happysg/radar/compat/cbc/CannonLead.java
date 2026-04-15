@@ -279,7 +279,7 @@ public class CannonLead {
 
         double muzzleSpeedPerTick = CannonUtil.getInitialVelocity(cannon, level);
         if (muzzleSpeedPerTick <= 0.0) {
-            LOGGER.warn("[LEAD] muzzleSpeedPerTick={} (no ammo/invalid state?) cannon={} mountPos={}",
+            LOGGER.debug("[LEAD] muzzleSpeedPerTick={} (no ammo/invalid state?) cannon={} mountPos={}",
                     muzzleSpeedPerTick, cannon.getClass().getSimpleName(), mount.getBlockPos());
             return null;
         }

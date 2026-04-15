@@ -5,6 +5,7 @@ import com.happysg.radar.block.datalink.DataLinkBlockItem;
 import com.happysg.radar.block.monitor.MonitorInputHandler;
 import com.happysg.radar.compat.cbcwpf.CBCWPFCompatRegister;
 import com.happysg.radar.compat.computercraft.CCCompatRegister;
+import com.happysg.radar.compat.vs2.VS2CompatRegister;
 import com.happysg.radar.ponder.RadarPonderPlugin;
 import com.happysg.radar.registry.ModCommands;
 
@@ -109,6 +110,10 @@ public class CreateRadar {
             CCCompatRegister.registerPeripherals();
         if (Mods.SHUPAPIUM.isLoaded())
             CBCWPFCompatRegister.registerCBCWPF();
+        if(Mods.VALKYRIENSKIES.isLoaded()){
+            VS2CompatRegister.registerVS2();
+        }
+
     }
     @SubscribeEvent
     public static void commonSetup(FMLCommonSetupEvent event) {
@@ -160,8 +165,8 @@ public class CreateRadar {
             ModContraptionTypes.register();
             // Stress values
             BlockStressValues.IMPACTS.register(ModBlocks.RADAR_BEARING_BLOCK.get(), () -> 4d);
-            BlockStressValues.IMPACTS.register(ModBlocks.AUTO_YAW_CONTROLLER_BLOCK.get(), () -> 128d);
-            BlockStressValues.IMPACTS.register(ModBlocks.AUTO_PITCH_CONTROLLER_BLOCK.get(), () -> 128d);
+            BlockStressValues.IMPACTS.register(ModBlocks.AUTO_YAW_CONTROLLER_BLOCK.get(), () -> 64);
+            BlockStressValues.IMPACTS.register(ModBlocks.AUTO_PITCH_CONTROLLER_BLOCK.get(), () -> 64d);
           //  BlockStressValues.IMPACTS.register(ModBlocks.TRACK_CONTROLLER_BLOCK.get(), () -> 16d);
 
             BlockStressValues.IMPACTS.register(ModBlocks.RADAR_RECEIVER_BLOCK.get(), () -> 0d);

@@ -1,15 +1,12 @@
 package com.happysg.radar.block.controller.yaw;
 
 import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
+
 import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.cbc.VS2CannonTargeting;
-import com.happysg.radar.compat.vs2.PhysicsHandler;
-import com.happysg.radar.config.RadarConfig;
-import com.mojang.logging.LogUtils;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
-import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollOptionBehaviour;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
@@ -20,447 +17,259 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3d;
-import org.valkyrienskies.clockwork.content.contraptions.phys.bearing.PhysBearingBlockEntity;
-import org.valkyrienskies.clockwork.platform.api.ContraptionController;
 import org.valkyrienskies.core.api.ships.Ship;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
-import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
-import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
-import net.minecraft.core.Direction;
-
+import org.valkyrienskies.clockwork.content.contraptions.phys.bearing.PhysBearingBlockEntity;
 
 import javax.annotation.Nullable;
-import java.util.List;
 
-public class AutoYawControllerBlockEntity extends KineticBlockEntity{
+public class AutoYawControllerBlockEntity extends KineticBlockEntity {
 
     private static final double TOLERANCE_DEG = 0.15;
+    private static final double DEADBAND_DEG = 0.5;
 
-    private double targetAngle; // degrees [0,360)
-
-    private double prevTargetAngle = 0.0;
-    private boolean hasPrevTarget = false;
+    private double targetAngle = 0.0;
+    private boolean isRunning = false;
 
     private double lastCbcYawWritten = 0.0;
     private boolean hasLastCbcYawWritten = false;
 
-    private boolean isRunning;
+    private double minAngleDeg = 0.0;
+    private double maxAngleDeg = 360.0;
 
-    @Nullable private Mount cachedMount = null;
-    @Nullable private MountKind cachedMountKind = null;
-    private boolean mountDirty = true;
-    private BlockPos cachedAdjacentPos = BlockPos.ZERO;
-    private final double MIN_MOVE_PER_TICK = 0.02;
-    private static final double MAX_MOVE_PER_TICK = RadarConfig.server().controllerPhysbearingMaxSpeed.get();
-    private static final double SNAP_DISTANCE = 37.0;
-    private static final double DEADBAND_DEG = .5;
     private BlockPos lastKnownPos = BlockPos.ZERO;
-    private double yawZeroOffsetDeg = 0.0;
-    private boolean hasYawZeroOffset = false;
-    private double lastYawZeroOffsetDeg = 0.0;
-    private MountKind currentmount;
 
+    @Nullable
+    private Mount cachedMount = null;
 
+    private boolean mountDirty = true;
+
+    private final CannonMountYaw cannonHandler;
+    private final PhysBearingYaw physHandler;
 
     public AutoYawControllerBlockEntity(BlockEntityType<?> typeIn, BlockPos pos, BlockState state) {
         super(typeIn, pos, state);
+        this.cannonHandler = new CannonMountYaw(this);
+        this.physHandler = new PhysBearingYaw(this);
     }
 
-    // ===== Tick =====
     @Override
     public void tick() {
         super.tick();
 
-        if (level == null || level.isClientSide())
+        if (level == null || level.isClientSide()) {
             return;
+        }
+
         Mount mount = resolveMount();
-        if (mount == null) return;
-
-        if (mount.kind == MountKind.CBC) {
-            if (Mods.CREATEBIGCANNONS.isLoaded()) {
-                rotateCBC(mount.cbc);
-                currentmount = MountKind.CBC;
+        if (mount != null) {
+            if (mount.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
+                cannonHandler.tick(mount.cbc);
+            } else if (mount.kind == MountKind.PHYS && Mods.VS_CLOCKWORK.isLoaded()) {
+                if (level.getGameTime() % 20 == 5) {
+                    physHandler.maybeUpdateYawZeroFromCannonInitialOrientation();
+                }
+                physHandler.tick(mount.phys);
             }
-            return;
         }
-        if (mount.kind == MountKind.PHYS && Mods.VS_CLOCKWORK.isLoaded()) {
-            if(level.getGameTime() %20 == 5) {
-                maybeUpdateYawZeroFromCannonInitialOrientation();
-            }
-            currentmount = MountKind.PHYS;
-            rotatePhysBearing(mount.phys);
-        }
-        if (!level.isClientSide && level.getGameTime() % 40 == 0) {
-            if (level instanceof ServerLevel serverLevel) {
-                if (lastKnownPos.equals(worldPosition))
-                    return;
 
+        if (level.getGameTime() % 40 == 0 && level instanceof ServerLevel serverLevel) {
+            if (!lastKnownPos.equals(worldPosition)) {
                 ResourceKey<Level> dim = serverLevel.dimension();
                 WeaponNetworkData data = WeaponNetworkData.get(serverLevel);
 
-                boolean updated = data.updateWeaponEndpointPosition(
-                        dim,
-                        lastKnownPos,
-                        worldPosition
-                );
-
-                // only commit the new position if the network accepted it
+                boolean updated = data.updateWeaponEndpointPosition(dim, lastKnownPos, worldPosition);
                 if (updated) {
                     lastKnownPos = worldPosition;
                     setChanged();
                 }
             }
         }
-
     }
 
-    // ===== Public API =====
     public void setTargetAngle(float targetAngle) {
-        this.targetAngle = clampYawToLimits(targetAngle);
+        this.targetAngle = targetAngle;
         this.isRunning = true;
         notifyUpdate();
         setChanged();
     }
-
 
     public double getTargetAngle() {
         return targetAngle;
     }
 
     public void setTarget(@Nullable Vec3 targetPos) {
-        if (level == null || level.isClientSide())
+        if (level == null || level.isClientSide()) {
             return;
+        }
 
         if (targetPos == null) {
             isRunning = false;
-
             notifyUpdate();
             setChanged();
             return;
         }
-        BlockPos abovepos = worldPosition.above();
-        Vec3 mountpos = Vec3.ZERO;
-        if(level.getBlockEntity(abovepos) instanceof CannonMountBlockEntity mountBlock) {
-            if (PhysicsHandler.isBlockInShipyard(level, this.getBlockPos())) {
-                List<List<Double>> angles = VS2CannonTargeting.calculatePitchAndYawVS2(mountBlock, targetPos, (ServerLevel) level);
-                if (angles == null || angles.isEmpty() || angles.get(0).isEmpty())
-                    return;
-
-                // yaw
-                this.targetAngle = clampYawToLimits(angles.get(0).get(1));
-
-
-                isRunning = true;
-                notifyUpdate();
-                setChanged();
-                return;
-            }
-        }
-
-        isRunning = true;
-
-        Vec3 cannonCenter = isUpsideDown()
-                ? worldPosition.below(3).getCenter()
-                : worldPosition.above(3).getCenter();
-        // i'm computing yaw in ship-space when we're on a VS2 ship
-        double angle = computeYawToTargetDeg(cannonCenter, targetPos);
-        double newAngle = wrap360(angle) + 180.0;
-
-        if (currentmount == MountKind.PHYS && hasYawZeroOffset) {
-            newAngle = wrap360(newAngle - yawZeroOffsetDeg);
-        }
-
-        this.targetAngle = clampYawToLimits(newAngle);
-        notifyUpdate();
-        setChanged();
-    }
-    private long lastCbcYawWrittenTick = -1;
-    /** Works for either mount type */
-    public boolean atTargetYaw(boolean lag) {
-        if (level == null) return false;
 
         Mount mount = resolveMount();
-        if (mount == null) return false;
-
-        // i increase tolerance slightly if we're not lag-compensating
-        double effectiveTolerance = TOLERANCE_DEG;
-        if (!lag) {
-            effectiveTolerance += 0.15;
+        if (mount == null) {
+            return;
         }
 
         if (mount.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
-            PitchOrientedContraptionEntity contraption = mount.cbc.getContraption();
-            if (contraption == null) return false;
-
-            double desired = hasPrevTarget
-                    ? wrap360(clampYawToLimits(prevTargetAngle))
-                    : wrap360(clampYawToLimits(targetAngle));
-
-            // i prefer what we actually commanded (contraption.yaw can lag behind)
-            double current = hasLastCbcYawWritten
-                    ? wrap360(lastCbcYawWritten)
-                    : wrap360(contraption.yaw);
-
-            return Math.abs(shortestDelta(current, desired)) < effectiveTolerance;
+            cannonHandler.setTarget(mount.cbc, targetPos);
+            return;
         }
 
         if (mount.kind == MountKind.PHYS && Mods.VS_CLOCKWORK.isLoaded()) {
-            Double actualRad = mount.phys.getActualAngle();
-            if (actualRad == null) return false;
+            physHandler.setTarget(mount.phys, targetPos);
+        }
+    }
 
-            double currentDeg = wrap360(Math.toDegrees(actualRad));
-            double desiredDeg = wrap360(360.0 - targetAngle);
+    public boolean atTargetYaw(boolean lag) {
+        if (level == null) {
+            return false;
+        }
 
-            return Math.abs(shortestDelta(currentDeg, desiredDeg))
-                    < Math.max(effectiveTolerance, DEADBAND_DEG);
+        Mount mount = resolveMount();
+        if (mount == null) {
+            return false;
+        }
+
+        if (mount.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
+            return cannonHandler.atTargetYaw(mount.cbc, lag);
+        }
+
+        if (mount.kind == MountKind.PHYS && Mods.VS_CLOCKWORK.isLoaded()) {
+            return physHandler.atTargetYaw(mount.phys, lag);
         }
 
         return false;
     }
 
-    // ===== Behavior: CBC =====
-    private void rotateCBC(CannonMountBlockEntity mount) {
-        if (!isRunning) return;
-
-        PitchOrientedContraptionEntity contraption = mount.getContraption();
-        if (contraption == null) return;
-
-        double currentYaw = wrap360(contraption.yaw);
-        double desiredYaw = wrap360(clampYawToLimits(targetAngle));
-
-
-        double yawDiff = shortestDelta(currentYaw, desiredYaw);
-        if (Math.abs(yawDiff) <= TOLERANCE_DEG) {
-            mount.setYaw((float) desiredYaw);
-
-            lastCbcYawWritten = wrap360(desiredYaw);
-            hasLastCbcYawWritten = true;
-
-            mount.notifyUpdate();
-
-            // isRunning = false;
-            return;
-        }
-        double rpm = Math.abs(getSpeed());
-        if (rpm <= 0) return;
-
-        if (rpm == 256.0) {
-            mount.setYaw((float) desiredYaw);
-            lastCbcYawWritten = wrap360(desiredYaw);
-            hasLastCbcYawWritten = true;
-            mount.notifyUpdate();
-            return;
-        }
-        double speedFactor = rpm / 24.0;
-
-        double nextYaw;
-        if (Math.abs(yawDiff) > speedFactor) {
-            nextYaw = wrap360(currentYaw + Math.signum(yawDiff) * speedFactor);
-        } else {
-            nextYaw = desiredYaw;
+    public boolean isUpsideDown() {
+        if (level == null) {
+            return false;
         }
 
-        mount.setYaw((float) nextYaw);
-        lastCbcYawWritten = wrap360(nextYaw);
-        hasLastCbcYawWritten = true;
-        mount.notifyUpdate();
+        BlockState state = getBlockState();
+        if (!state.hasProperty(DirectionalKineticBlock.FACING)) {
+            return false;
+        }
+
+        return state.getValue(DirectionalKineticBlock.FACING) == Direction.UP;
     }
-    private void rotatePhysBearing(PhysBearingBlockEntity mount) {
-        ScrollOptionBehaviour<ContraptionController.LockedMode> mode = mount.getMovementMode();
-        if (mode != null && mode.getValue() != ContraptionController.LockedMode.FOLLOW_ANGLE.ordinal()) {
-            mode.setValue(ContraptionController.LockedMode.FOLLOW_ANGLE.ordinal());
-        }
 
-        if (!isRunning) return;
-
-        double rpm = Math.abs(getSpeed());
-        if (rpm <= 0.0) return;
-
-        Double actualRad = mount.getActualAngle();
-        if (actualRad == null) return;
-
-        // i convert physbearing degrees -> controller degrees (your mapping)
-        double currentPhysDeg = wrap360(Math.toDegrees(actualRad));
-        double currentCtlDeg = wrap360(360.0 - currentPhysDeg);
-
-        // i keep desired in controller-space and clamp to my limits
-        double desiredCtlDeg = clampYawToLimits(targetAngle);
-
-        // i treat min==max as FULL RANGE (same behavior as your clampYawToLimits)
-        double min = wrap360(minAngleDeg);
-        double max = wrap360(maxAngleDeg);
-        double allowedLen = wrap360(max - min); // (max-min+360)%360
-
-        boolean fullRange = allowedLen < 1e-6;
-
-        // deadband in controller-space
-        double diffCtl = shortestDelta(currentCtlDeg, desiredCtlDeg);
-        double distCtl = Math.abs(diffCtl);
-        if (distCtl <= Math.max(TOLERANCE_DEG, DEADBAND_DEG)) {
-            double desiredPhysDeg = wrap360(360.0 - desiredCtlDeg);
-            mount.setAngle((float) desiredPhysDeg);
-            mount.notifyUpdate();
-            return;
-        }
-
-        // max degrees i can move this tick
-        double stepDeg = getStep(SNAP_DISTANCE, distCtl);
-
-        double nextCtlDeg;
-
-        if (fullRange) {
-            double move = Math.min(stepDeg, distCtl);
-            nextCtlDeg = wrap360(currentCtlDeg + Math.signum(diffCtl) * move);
-        } else {
-            double currentParam = angleToAllowedParamOrNearest(currentCtlDeg, min, allowedLen);
-            double desiredParam = angleToAllowedParamOrNearest(desiredCtlDeg, min, allowedLen);
-
-            double deltaParam = desiredParam - currentParam;
-            double move = Math.signum(deltaParam) * Math.min(Math.abs(deltaParam), stepDeg);
-
-            double nextParam = currentParam + move;
-            nextCtlDeg = allowedParamToAngle(nextParam, min, allowedLen);
-        }
-
-        // optional: very fast snap
-        if (rpm >= 256.0) {
-            nextCtlDeg = desiredCtlDeg;
-        }
-
-        // i convert back controller degrees -> physbearing degrees
-        double nextPhysDeg = wrap360(360.0 - nextCtlDeg);
-        mount.setAngle((float) nextPhysDeg);
-        mount.notifyUpdate();
+    public void markMountDirtyExternal() {
+        mountDirty = true;
     }
-    private void maybeUpdateYawZeroFromCannonInitialOrientation() {
-        if (level == null) return;
-        BlockPos cannonPos =WeaponNetworkData.get((ServerLevel) level).getMountForController(level.dimension(),worldPosition);
-        if(cannonPos == null)return;
-        CannonMountBlockEntity cannonMount;
-        if(level.getBlockEntity(cannonPos) instanceof CannonMountBlockEntity mount) cannonMount =mount;
-        else return;
 
-        PitchOrientedContraptionEntity ce = cannonMount.getContraption();
-        if (ce == null) return;
-
-        if (!(ce.getContraption() instanceof AbstractMountedCannonContraption cannonContraption))
-            return;
-
-        Direction initial = cannonContraption.initialOrientation();
-        if (initial == null || !initial.getAxis().isHorizontal())
-            return;
-
-        double newOffset = controllerYawForCardinalDirection(initial);
-
-        if (!hasYawZeroOffset) {
-            yawZeroOffsetDeg = wrap360(newOffset);
-            lastYawZeroOffsetDeg = yawZeroOffsetDeg;
-            hasYawZeroOffset = true;
-            setChanged();
+    public void onRelevantNeighborChanged(BlockPos fromPos) {
+        BlockPos mountPos = getMountPos();
+        if (mountPos == null) {
             return;
         }
 
-        double oldOffset = lastYawZeroOffsetDeg;
-        double delta = shortestDelta(oldOffset, newOffset); // signed shortest path
+        if (fromPos.equals(mountPos)) {
+            mountDirty = true;
+        }
+    }
 
-        if (Math.abs(delta) < 1e-6) return;
+    @Nullable
+    public Mount resolveMount() {
+        if (level == null) {
+            return null;
+        }
 
-        yawZeroOffsetDeg = wrap360(newOffset);
-        lastYawZeroOffsetDeg = yawZeroOffsetDeg;
+        if (mountDirty) {
+            refreshMountCache();
+        }
 
-        targetAngle = wrap360(targetAngle - delta);
-        minAngleDeg = wrap360(minAngleDeg - delta);
-        maxAngleDeg = wrap360(maxAngleDeg - delta);
+        return cachedMount;
+    }
 
-        normalizeLimits();
-        targetAngle = clampYawToLimits(targetAngle);
+    private void refreshMountCache() {
+        if (level == null) {
+            return;
+        }
 
-        notifyUpdate();
+        BlockPos mountPos = getMountPos();
+        Mount newMount = null;
+
+        if (mountPos != null) {
+            BlockEntity adjacent = level.getBlockEntity(mountPos);
+
+            if (Mods.CREATEBIGCANNONS.isLoaded() && adjacent instanceof CannonMountBlockEntity cbc) {
+                newMount = Mount.cbc(cbc);
+            } else if (Mods.VS_CLOCKWORK.isLoaded() && adjacent instanceof PhysBearingBlockEntity phys) {
+                newMount = Mount.phys(phys);
+            }
+        }
+
+        cachedMount = newMount;
+        mountDirty = false;
+
+        if (newMount == null) {
+            isRunning = false;
+            hasLastCbcYawWritten = false;
+            physHandler.reset();
+        }
+
         setChanged();
+        notifyUpdate();
     }
-    private double minAngleDeg = 0.0;
-    private double maxAngleDeg = 360.0;
 
-    public double getMinAngleDeg() { return minAngleDeg; }
-    public double getMaxAngleDeg() { return maxAngleDeg; }
+    @Nullable
+    private BlockPos getMountPos() {
+        if (level == null) {
+            return null;
+        }
+
+        return isUpsideDown() ? worldPosition.below() : worldPosition.above();
+    }
+
+    public double getMinAngleDeg() {
+        return minAngleDeg;
+    }
+
+    public double getMaxAngleDeg() {
+        return maxAngleDeg;
+    }
 
     public void setMinAngleDeg(double v) {
         minAngleDeg = wrap360(wrap180(v));
-        normalizeLimits();
-        targetAngle = clampYawToLimits(targetAngle);
         notifyUpdate();
         setChanged();
     }
 
     public void setMaxAngleDeg(double v) {
         maxAngleDeg = wrap360(wrap180(v));
-        normalizeLimits();
-        targetAngle = clampYawToLimits(targetAngle);
         notifyUpdate();
         setChanged();
     }
-    private static double controllerYawForCardinalDirection(Direction d) {
-        return switch (d) {
-            case SOUTH -> 0.0;
-            case WEST  -> 90.0;
-            case NORTH -> 180.0;
-            case EAST  -> 270.0;
-            default    -> 0.0;
-        };
+
+    public boolean canPossiblyAimAt(Vec3 originWorld, Vec3 targetWorld) {
+        if (originWorld == null || targetWorld == null) {
+            return false;
+        }
+
+        Vec3 d = targetWorld.subtract(originWorld);
+        if (d.lengthSqr() < 1.0e-6) {
+            return true;
+        }
+
+        double yawDeg = Math.toDegrees(Math.atan2(d.z, d.x)) - 90.0;
+        yawDeg = wrap360(yawDeg);
+
+        return true;
     }
 
-    private static double angleToAllowedParamOrNearest(double angleDeg, double minDeg, double allowedLen) {
-        double a = wrap360(angleDeg);
-        double min = wrap360(minDeg);
-
-        double d = wrap360(a - min); // [0..360)
-
-        if (d <= allowedLen) return d;
-
-        double distToMaxAlongCircle = d - allowedLen;
-        double distToMinAlongCircle = 360.0 - d;
-
-        return (distToMaxAlongCircle <= distToMinAlongCircle) ? allowedLen : 0.0;
-    }
-
-    // i convert a param back into an angle on the allowed arc
-    private static double allowedParamToAngle(double param, double minDeg, double allowedLen) {
-        double min = wrap360(minDeg);
-        double p = Math.max(0.0, Math.min(allowedLen, param));
-        return wrap360(min + p);
-    }
-    private void normalizeLimits() {
-        minAngleDeg = wrap360(minAngleDeg);
-        maxAngleDeg = wrap360(maxAngleDeg);
-    }
-
-
-
-    private double getStep(double range, double dist) {
-        double rpm = Math.abs(getSpeed());
-        double r = Math.min(256.0, Math.max(0.0, rpm));
-        double gamma = 1.6;
-        double x = r / 256.0;
-        double effectiveRpm = 1.0 + (r - 1.0) * Math.pow(x, gamma);
-
-        double degPerTick = effectiveRpm * 0.3;
-        double radPerTick = degPerTick * (Math.PI / 180.0);
-
-        double maxStep = range * radPerTick;
-        maxStep = Math.max(MIN_MOVE_PER_TICK, Math.min(MAX_MOVE_PER_TICK, maxStep));
-
-        return Math.min(dist, maxStep);
-    }
-
-    // ===== VS2 ship-space yaw helper =====
-    private double computeYawToTargetDeg(Vec3 cannonCenterWorld, Vec3 targetWorld) {
+    public double computeYawToTargetDeg(Vec3 cannonCenterWorld, Vec3 targetWorld) {
         Ship ship = getShipIfPresent();
 
         Vec3 cannonCenter = cannonCenterWorld;
         Vec3 target = targetWorld;
 
-        // i'm converting both points into ship-space so ship rotation is automatically accounted for
         if (Mods.VALKYRIENSKIES.isLoaded() && ship != null) {
             cannonCenter = toShipSpace(ship, cannonCenterWorld);
             target = toShipSpace(ship, targetWorld);
@@ -470,6 +279,19 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity{
         double dz = target.z - cannonCenter.z;
 
         return Math.toDegrees(Math.atan2(dz, dx)) + 90.0;
+    }
+
+    @Nullable
+    private Ship getShipIfPresent() {
+        if (level == null) {
+            return null;
+        }
+
+        if (!Mods.VALKYRIENSKIES.isLoaded()) {
+            return null;
+        }
+
+        return VSGameUtilsKt.getShipManagingPos(level, worldPosition);
     }
 
     private Vec3 toShipSpace(Ship ship, Vec3 worldPos) {
@@ -482,7 +304,6 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity{
     protected void read(CompoundTag compound, boolean clientPacket) {
         super.read(compound, clientPacket);
 
-        // i load limits (defaults if missing)
         if (compound.contains("MinAngleDeg", Tag.TAG_DOUBLE)) {
             minAngleDeg = compound.getDouble("MinAngleDeg");
         }
@@ -490,9 +311,7 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity{
             maxAngleDeg = compound.getDouble("MaxAngleDeg");
         }
 
-        // i load target + clamp it to the limits
-        targetAngle = clampYawToLimits(wrap360(compound.getDouble("TargetAngle")));
-
+        targetAngle = wrap360(compound.getDouble("TargetAngle"));
         isRunning = compound.getBoolean("IsRunning");
 
         if (compound.contains("LastKnownPos", Tag.TAG_LONG)) {
@@ -500,188 +319,108 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity{
         } else {
             lastKnownPos = worldPosition;
         }
+
+        hasLastCbcYawWritten = false;
+        physHandler.read(compound);
     }
 
     @Override
     protected void write(CompoundTag compound, boolean clientPacket) {
         super.write(compound, clientPacket);
 
-        // i save limits
         compound.putDouble("MinAngleDeg", minAngleDeg);
         compound.putDouble("MaxAngleDeg", maxAngleDeg);
-
-        // i save target (clamped)
-        compound.putDouble("TargetAngle", wrap360(clampYawToLimits(targetAngle)));
-
+        compound.putDouble("TargetAngle", wrap360(targetAngle));
         compound.putBoolean("IsRunning", isRunning);
         compound.putLong("LastKnownPos", lastKnownPos.asLong());
-    }
 
+        physHandler.write(compound);
+    }
 
     @Override
     protected void copySequenceContextFrom(KineticBlockEntity sourceBE) {
-        // i'm keeping this empty like the original controller
+        // i'm keeping this empty like before
     }
 
-
-
-    // ===== Mount resolution =====
-    private enum MountKind { CBC, PHYS, RADAR }
-
-    private class Mount {
-        final MountKind kind;
-        final CannonMountBlockEntity cbc;
-        final PhysBearingBlockEntity phys;
-
-        private Mount(CannonMountBlockEntity cbc) {
-            this.kind = MountKind.CBC;
-            this.cbc = cbc;
-            this.phys = null;
-        }
-
-        private Mount(PhysBearingBlockEntity phys) {
-            this.kind = MountKind.PHYS;
-            this.cbc = null;
-            this.phys = phys;
-        }
-    }
-    public boolean isUpsideDown() {
-        if (level == null) return false;
-        BlockState state = getBlockState();
-        if (!state.hasProperty(DirectionalKineticBlock.FACING)) return false;
-        return state.getValue(DirectionalKineticBlock.FACING) == Direction.UP;
-    }
-    public void markMountDirtyExternal() {
-        // i expose this so the block can invalidate cache when my own state changes
-        markMountDirty();
-    }
-    @Nullable
-    public Mount resolveMount() {
-        if (level == null) return null;
-        if (mountDirty) refreshMountCache();
-        return cachedMount;
+    public void setInternalTargetAngle(double targetAngle) {
+        this.targetAngle = targetAngle;
     }
 
-    private void markMountDirty() {
-        mountDirty = true;
-    }
-    private void refreshMountCache() {
-        if (level == null) return;
-
-        BlockPos adjacentPos = isUpsideDown() ? worldPosition.below() : worldPosition.above();
-        cachedAdjacentPos = adjacentPos;
-
-        BlockEntity adjacent = level.getBlockEntity(adjacentPos);
-
-        Mount newMount = null;
-        MountKind newKind = null;
-
-        if (Mods.CREATEBIGCANNONS.isLoaded() && adjacent instanceof CannonMountBlockEntity cbc) {
-            newMount = new Mount(cbc);
-            newKind = MountKind.CBC;
-        } else if (Mods.VS_CLOCKWORK.isLoaded() && adjacent instanceof PhysBearingBlockEntity phys) {
-            newMount = new Mount(phys);
-            newKind = MountKind.PHYS;
-        }
-
-        // i update cached values
-        cachedMount = newMount;
-        cachedMountKind = newKind;
-        mountDirty = false;
-
-        // i keep your currentmount in sync so setTarget() keeps behaving the same
-        currentmount = (newKind != null) ? newKind : currentmount;
-
-        // optional: if mount goes away, stop running so it doesn't fight phantom state
-        if (newMount == null) {
-            isRunning = false;
-            hasYawZeroOffset = false;
-        }
-
-        setChanged();
-        notifyUpdate();
-    }
-    public void onRelevantNeighborChanged(BlockPos fromPos) {
-        // i only care if the neighbor that changed is the one i mount to
-        BlockPos adjacentPos = isUpsideDown() ? worldPosition.below() : worldPosition.above();
-        if (!fromPos.equals(adjacentPos)) return;
-
-        markMountDirty();
-    }
-    @Nullable
-    private Ship getShipIfPresent() {
-        if (level == null) return null;
-
-        if (!(Mods.VALKYRIENSKIES.isLoaded()))
-            return null;
-
-        return VSGameUtilsKt.getShipManagingPos(level, worldPosition);
+    void setRunning(boolean running) {
+        this.isRunning = running;
     }
 
-    private static double wrap360(double deg) {
+    boolean isRunningController() {
+        return isRunning;
+    }
+
+    void recordCbcYawWritten(double yawDeg) {
+        this.lastCbcYawWritten = wrap360(yawDeg);
+        this.hasLastCbcYawWritten = true;
+    }
+
+    boolean hasLastCbcYawWritten() {
+        return hasLastCbcYawWritten;
+    }
+
+    double getLastCbcYawWritten() {
+        return lastCbcYawWritten;
+    }
+
+    void setInternalMinAngleDeg(double v) {
+        this.minAngleDeg = v;
+    }
+
+    void setInternalMaxAngleDeg(double v) {
+        this.maxAngleDeg = v;
+    }
+
+    static double getToleranceDeg() {
+        return TOLERANCE_DEG;
+    }
+
+    static double getDeadbandDeg() {
+        return DEADBAND_DEG;
+    }
+
+    static double wrap360(double deg) {
         deg %= 360.0;
         if (deg < 0) deg += 360.0;
         return deg;
     }
 
-    // i keep angles in the nice user space [-180, 180)
-    private static double wrap180(double deg) {
+    static double wrap180(double deg) {
         deg = wrap360(deg);
         if (deg >= 180.0) deg -= 360.0;
         return deg;
     }
 
-    private static boolean isAngleInWrappedRange(double angle, double min, double max) {
-        angle = wrap360(angle);
-        min = wrap360(min);
-        max = wrap360(max);
-
-        if (min <= max) return angle >= min && angle <= max;
-        return angle >= min || angle <= max;
+    static double shortestDelta(double from, double to) {
+        return ((to - from + 540.0) % 360.0) - 180.0;
     }
 
-
-    private static double wrappedDistance(double a, double b) {
-        double d = Math.abs(wrap360(a) - wrap360(b));
-        return Math.min(d, 360.0 - d);
+    enum MountKind {
+        CBC,
+        PHYS
     }
 
+    static class Mount {
+        final MountKind kind;
+        final CannonMountBlockEntity cbc;
+        final PhysBearingBlockEntity phys;
 
-    private double clampYawToLimits(double angle) {
-        double min  = wrap360(minAngleDeg);
-        double max  = wrap360(maxAngleDeg);
-        angle = wrap360(angle);
-
-        if (Math.abs(wrappedDistance(min, max)) < 1e-6) {
-            return angle;
+        private Mount(MountKind kind, @Nullable CannonMountBlockEntity cbc, @Nullable PhysBearingBlockEntity phys) {
+            this.kind = kind;
+            this.cbc = cbc;
+            this.phys = phys;
         }
 
-        if (isAngleInWrappedRange(angle, min, max))
-            return angle;
+        static Mount cbc(CannonMountBlockEntity cbc) {
+            return new Mount(MountKind.CBC, cbc, null);
+        }
 
-        double dToMin = wrappedDistance(angle, min);
-        double dToMax = wrappedDistance(angle, max);
-        return (dToMin <= dToMax) ? min : max;
-    }
-
-    public boolean canPossiblyAimAt(Vec3 originWorld, Vec3 targetWorld) {
-        if (originWorld == null || targetWorld == null) return false;
-
-        Vec3 d = targetWorld.subtract(originWorld);
-        if (d.lengthSqr() < 1.0e-6) return true;
-
-        double yawDeg = Math.toDegrees(Math.atan2(d.z, d.x)) - 90.0;
-        yawDeg = wrap360(yawDeg);
-
-        double min = wrap360(minAngleDeg);
-        double max = wrap360(maxAngleDeg);
-
-        if (min == max) return true;
-
-        return isAngleInWrappedRange(yawDeg, min, max);
-    }
-
-    private static double shortestDelta(double from, double to) {
-        return ((to - from + 540.0) % 360.0) - 180.0;
+        static Mount phys(PhysBearingBlockEntity phys) {
+            return new Mount(MountKind.PHYS, null, phys);
+        }
     }
 }

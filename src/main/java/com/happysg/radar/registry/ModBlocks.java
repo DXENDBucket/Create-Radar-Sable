@@ -84,26 +84,9 @@ public class ModBlocks {
                     .build()
                     .register();
 
-    public static final BlockEntry<StationaryRadarBlock> STATIONARY_RADAR  =
-            REGISTRATE.block("plane_radar", StationaryRadarBlock::new)
-                    .initialProperties(SharedProperties::softMetal)
-                    .addLayer(() -> RenderType::cutout)
-                    .properties(p -> p.noOcclusion())
-                    .properties(p -> p.strength(0.8f))
-                    .blockstate((c, p) -> p.horizontalBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
-                    .transform(axeOrPickaxe())
-                    .simpleItem()
-                    .register();
 
-    public static BlockEntry<IdentificationTransponder> ID_BLOCK =
-            REGISTRATE.block("identification_transponder", IdentificationTransponder::new)
-                    .initialProperties(SharedProperties::softMetal)
-                    .properties(p -> p.noOcclusion())
-                    .properties(p -> p.strength(0.8f))
-                    .transform(axeOrPickaxe())
-                    .blockstate((c, p) -> p.simpleBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
-                    .simpleItem()
-                    .register();
+
+
 
     @SuppressWarnings("unused")
     public static final BlockEntry<RadarReceiverBlock> RADAR_RECEIVER_BLOCK =
@@ -217,14 +200,7 @@ public class ModBlocks {
                             prov.models().getExistingFile(ctx.getId()), 0))
                     .simpleItem()
                     .register();
-    public static final BlockEntry<RadarWarningReceiverBlock> RWR_BLOCK =
-            REGISTRATE.block("radar_warning_receiver", RadarWarningReceiverBlock::new)
-                    .initialProperties(SharedProperties::softMetal)
-                    .properties(BlockBehaviour.Properties::noOcclusion)
-                    .properties(p -> p.strength(0.5f))
-                    .transform(axeOrPickaxe())
-                    .simpleItem()
-                    .register();
+
 
 
 

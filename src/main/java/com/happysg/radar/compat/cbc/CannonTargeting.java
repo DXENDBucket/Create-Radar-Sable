@@ -22,6 +22,12 @@ import static java.lang.Math.toRadians;
 public class CannonTargeting {
     private static final Logger LOGGER = LogUtils.getLogger();
 
+    private static List<Double> directPitchToTarget(Vec3 originPos, Vec3 targetPos) {
+        double dX = Math.hypot(targetPos.x - originPos.x, targetPos.z - originPos.z);
+        double dY = targetPos.y - originPos.y;
+        return List.of(Math.toDegrees(Math.atan2(dY, dX)));
+    }
+
     public static double calculateProjectileYatX(double speed, double dX, double thetaRad, double drag, double g) {
         double l = log(1 - (drag * dX) / (speed * Math.cos(thetaRad)));
         if (Double.isInfinite(l)) l = NaN;
@@ -42,16 +48,13 @@ public class CannonTargeting {
         if (contraption == null || !(contraption.getContraption() instanceof AbstractMountedCannonContraption cannon)) return null;
 
         if (CannonUtil.isLaserCannon(cannon)) {
-            double dX = Math.hypot(targetPos.x - originPos.x, targetPos.z - originPos.z);
-            double dY = targetPos.y - originPos.y;
-            double pitch = Math.toDegrees(Math.atan2(dY, dX));
-            return List.of(pitch);
+            return directPitchToTarget(originPos, targetPos);
         }
 
         float speed = CannonUtil.getInitialVelocity(cannon, level);
         double drag = CannonUtil.getProjectileDrag(cannon, level);
         double gravity = CannonUtil.getProjectileGravity(cannon, level);
-        if (speed == 0) return null;
+        if (speed <= 0) return directPitchToTarget(originPos, targetPos);
 
         double dX = Math.hypot(targetPos.x - originPos.x, targetPos.z - originPos.z);
         double dY = targetPos.y - originPos.y;

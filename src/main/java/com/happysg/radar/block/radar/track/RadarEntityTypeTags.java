@@ -8,8 +8,8 @@ import net.minecraft.world.entity.EntityType;
 
 public class RadarEntityTypeTags {
 
-    public static final TagKey<EntityType<?>> RADAR_PLAYER =
-            TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation(CreateRadar.MODID, "radar_player"));
+//    public static final TagKey<EntityType<?>> RADAR_PLAYER =
+//            TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation(CreateRadar.MODID, "radar_player"));
 
     public static final TagKey<EntityType<?>> RADAR_HOSTILE =
             TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation(CreateRadar.MODID, "radar_hostile"));
@@ -23,8 +23,6 @@ public class RadarEntityTypeTags {
     public static final TagKey<EntityType<?>> RADAR_PROJECTILE =
             TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation(CreateRadar.MODID, "radar_projectile"));
 
-    public static final TagKey<EntityType<?>> RADAR_CONTRAPTION =
-            TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation(CreateRadar.MODID, "radar_contraption"));
 
     public static final TagKey<EntityType<?>> RADAR_ITEM =
             TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation(CreateRadar.MODID, "radar_item"));

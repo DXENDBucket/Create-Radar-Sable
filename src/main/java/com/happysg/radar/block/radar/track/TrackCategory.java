@@ -27,12 +27,10 @@ public enum TrackCategory {
 
     public static TrackCategory get(Entity entity) {
             EntityType<?> type = entity.getType();
-            if (type.is(RadarEntityTypeTags.RADAR_PLAYER)) return PLAYER;
             if (type.is(RadarEntityTypeTags.RADAR_HOSTILE)) return HOSTILE;
             if (type.is(RadarEntityTypeTags.RADAR_ANIMAL)) return ANIMAL;
             if (type.is(RadarEntityTypeTags.RADAR_MOB)) return MOB;
             if (type.is(RadarEntityTypeTags.RADAR_PROJECTILE)) return PROJECTILE;
-            if (type.is(RadarEntityTypeTags.RADAR_CONTRAPTION)) return CONTRAPTION;
             if (type.is(RadarEntityTypeTags.RADAR_ITEM)) return ITEM;
 
             if (entity instanceof Player) return PLAYER;

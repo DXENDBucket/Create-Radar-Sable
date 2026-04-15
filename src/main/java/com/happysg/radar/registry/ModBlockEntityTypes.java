@@ -37,10 +37,7 @@ public class ModBlockEntityTypes {
             .validBlocks(ModBlocks.RADAR_BEARING_BLOCK)
             .renderer(() -> BearingRenderer::new)
             .register();
-    public static final BlockEntityEntry<StationaryRadarBlockEntity> STATIONARY_RADAR = REGISTRATE
-            .blockEntity("plane_radar", StationaryRadarBlockEntity::new)
-            .validBlocks(ModBlocks.STATIONARY_RADAR)
-            .register();
+
 
     public static final BlockEntityEntry<DataLinkBlockEntity> RADAR_LINK = REGISTRATE
             .blockEntity("data_link", DataLinkBlockEntity::new)
@@ -72,10 +69,7 @@ public class ModBlockEntityTypes {
             .validBlocks(ModBlocks.NETWORK_FILTERER_BLOCK)
             .renderer(()-> NetworkFiltererRenderer::new)
             .register();
-    public static final BlockEntityEntry<RadarWarningReceiverBlockEntity> RWR_BE = REGISTRATE
-            .blockEntity("rwr_be", RadarWarningReceiverBlockEntity::new)
-            .validBlocks(ModBlocks.RWR_BLOCK)
-            .register();
+
 
     public static void register() {
         CreateRadar.getLogger().info("Registering block entity types!");

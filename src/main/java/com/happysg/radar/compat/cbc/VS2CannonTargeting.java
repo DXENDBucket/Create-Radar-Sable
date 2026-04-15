@@ -14,6 +14,17 @@ import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContr
 import java.util.List;
 
 public class VS2CannonTargeting {
+    private static List<List<Double>> directAimToTarget(Vec3 mountPos, Vec3 targetPos) {
+        Vec3 diff = targetPos.subtract(mountPos);
+        double horizontal = Math.hypot(diff.x, diff.z);
+        double pitch = Math.toDegrees(Math.atan2(diff.y, horizontal));
+        double yaw = Math.toDegrees(Math.atan2(diff.z, diff.x));
+        if (yaw < 0) {
+            yaw += 360.0;
+        }
+        return List.of(List.of(pitch, yaw));
+    }
+
     public static List<List<Double>> calculatePitchAndYawVS2(CannonMountBlockEntity mount, Vec3 targetPos, ServerLevel level) {
         if (mount == null || targetPos == null) {
             return null;
@@ -35,6 +46,10 @@ public class VS2CannonTargeting {
         float chargePower = CannonUtil.getInitialVelocity(cannonContraption, level);
         double drag = CannonUtil.getProjectileDrag(cannonContraption, level);
         double gravity = CannonUtil.getProjectileGravity(cannonContraption, level);
+
+        if (chargePower <= 0) {
+            return directAimToTarget(mountPos, targetPos);
+        }
 
         return calculatePitchAndYawVS2(level, chargePower, targetPos, mountPos, barrelLength, initialDirection, drag, gravity);
     }

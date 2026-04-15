@@ -4,9 +4,9 @@ license = "MIT"
 
 [[mods]] #mandatory
 modId = "create_radar" #mandatory
-version = "0.3" #mandatory
+version = "0.4" #mandatory
 displayName = "Create: Radars" #mandatory
-authors = "HappySG, CeoOfGoogle, Kipti, OndatraCZE, Ray(furuochen)" #optional
+authors = "Aycer, HappySG, CeoOfGoogle, Kipti, OndatraCZE, Ray(furuochen)" #optional
 
 # The description text for the radar (multi line!) (#mandatory)
 description = '''Welcome to Create Radars, a mod offering a variety of tools and blocks for Surveillance, Detection, and Controlling Weapons.'''
@@ -27,7 +27,7 @@ side = "BOTH"
 [[dependencies.create_radar]]
 modId = "create"
 mandatory = true
-versionRange = "[6.0.8,6.1.0)"
+versionRange = "[6.0.7,6.1.0)"
 ordering = "BEFORE"
 side = "BOTH"
 [[dependencies.create_radar]]
