@@ -10,11 +10,11 @@ public class CBCCompatRegister {
     public static ItemEntry<? extends Item> GUIDED_FUZE;
 
     public static void registerCBC() {
-        CreateRadar.getLogger().info("Registering CBC Compat Items!");
-        //conditionally register items, probably a bad idea
-        GUIDED_FUZE = CreateRadar.REGISTRATE
-                .item("guided_fuze", GuidedFuzeItem::new)
-                .properties(properties -> properties.rarity(Rarity.EPIC))
-                .register();
+//        CreateRadar.getLogger().info("Registering CBC Compat Items!");
+//        //conditionally register items, probably a bad idea
+//        GUIDED_FUZE = CreateRadar.REGISTRATE
+//                .item("guided_fuze", GuidedFuzeItem::new)
+//                .properties(properties -> properties.rarity(Rarity.EPIC))
+//                .register();
     }
 }

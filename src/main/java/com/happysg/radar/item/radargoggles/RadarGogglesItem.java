@@ -1,4 +1,9 @@
 package com.happysg.radar.item.radargoggles;
 
-public class RadarGogglesItem {
+import net.minecraft.world.item.Item;
+
+public class RadarGogglesItem extends Item {
+    public RadarGogglesItem(Properties pProperties) {
+        super(pProperties);
+    }
 }

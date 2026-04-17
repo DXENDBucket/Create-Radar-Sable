@@ -1,10 +1,12 @@
 package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.item.artilleryradio.ArtilleryRadioItem;
 import com.happysg.radar.item.binos.Binoculars;
 import com.happysg.radar.item.SafeZoneDesignatorItem;
 import com.happysg.radar.item.detectionfilter.DetectionFilterItem;
 import com.happysg.radar.item.identfilter.IdentFilterItem;
+import com.happysg.radar.item.radargoggles.RadarGogglesItem;
 import com.happysg.radar.item.targetfilter.TargetFilterItem;
 import com.tterrag.registrate.util.entry.ItemEntry;
 
@@ -19,8 +21,14 @@ public class ModItems {
     public static final ItemEntry<IdentFilterItem> IDENT_FILTER_ITEM = REGISTRATE.item("ident_filter_item",IdentFilterItem::new)
             .register();
     public static final ItemEntry<TargetFilterItem> TARGET_FILTER_ITEM = REGISTRATE.item("target_filter_item", TargetFilterItem::new)
-
             .register();
+    public static final ItemEntry<ArtilleryRadioItem> ARTILLERY_RADIO = REGISTRATE.item("artillery_radio", ArtilleryRadioItem::new)
+            .register();
+    public static final ItemEntry<RadarGogglesItem> RADAR_GOGGLES = REGISTRATE.item("radar_goggles", RadarGogglesItem::new)
+            .register();
+
+
+
     public static final ItemEntry<Binoculars> BINOCULARS =
             REGISTRATE.item("binoculars", p -> new Binoculars(p.stacksTo(1)))
                     .register();

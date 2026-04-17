@@ -1,4 +1,9 @@
 package com.happysg.radar.item.artilleryradio;
 
-public class ArtilleryRadioItem {
+import net.minecraft.world.item.Item;
+
+public class ArtilleryRadioItem extends Item {
+    public ArtilleryRadioItem(Properties pProperties) {
+        super(pProperties);
+    }
 }

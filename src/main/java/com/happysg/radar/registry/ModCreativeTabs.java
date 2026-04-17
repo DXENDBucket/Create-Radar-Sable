@@ -70,13 +70,22 @@ public class ModCreativeTabs {
         pOutput.accept(ModBlocks.AUTO_PITCH_CONTROLLER_BLOCK);
         pOutput.accept(ModBlocks.NETWORK_FILTERER_BLOCK);
         pOutput.accept(ModBlocks.FIRE_CONTROLLER_BLOCK);
+        pOutput.accept(ModBlocks.RADOME);
+        pOutput.accept(ModBlocks.SMART_MOUNT);
+        pOutput.accept(ModBlocks.SKY_RADAR);
+        pOutput.accept(ModBlocks.SIREN);
+        pOutput.accept(ModBlocks.SONAR_BEARING);
+        pOutput.accept(ModBlocks.SONAR_PANEL);
         pOutput.accept(ModItems.IDENT_FILTER_ITEM);
         pOutput.accept(ModItems.RADAR_FILTER_ITEM);
         pOutput.accept(ModItems.TARGET_FILTER_ITEM);
         pOutput.accept(ModItems.BINOCULARS);
-        if (Mods.CREATEBIGCANNONS.isLoaded()) {
-            pOutput.accept(CBCCompatRegister.GUIDED_FUZE);
-        }
+        pOutput.accept(ModItems.RADAR_GOGGLES);
+        pOutput.accept(ModItems.ARTILLERY_RADIO);
+        pOutput.accept(ModBlocks.SHIELD_JAMMER);
+
+
+
         if (Mods.CBCMODERNWARFARE.isLoaded()) {
             pOutput.accept(CBCMWCompatRegister.RADAR_GUIDANCE_BLOCK);
         }

@@ -1,4 +1,4 @@
-package com.happysg.radar.block.arad.jammer;
+package com.happysg.radar.block.arad.jammer.shield;
 
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -8,12 +8,12 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.List;
 
-public class JammerBlockEntity  extends SmartBlockEntity {
+public class ShieldJammerBlockEntity extends SmartBlockEntity {
 
     public int range = 128;
     public boolean enabled = true;
 
-    public JammerBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+    public ShieldJammerBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
     }
 

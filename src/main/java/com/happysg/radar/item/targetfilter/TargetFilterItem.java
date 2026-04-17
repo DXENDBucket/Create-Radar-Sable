@@ -36,4 +36,5 @@ public class TargetFilterItem extends Item {
         return clientFunc(level, player, hand);
     }
 
+
 }
