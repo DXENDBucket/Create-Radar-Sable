@@ -1,13 +1,8 @@
 package com.happysg.radar.block.controller.yaw;
 
-import com.happysg.radar.compat.vs2.PhysicsHandler;
-import com.happysg.radar.compat.cbc.VS2CannonTargeting;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
-
-import java.util.List;
 
 public class CannonMountYaw {
 
@@ -22,23 +17,6 @@ public class CannonMountYaw {
     }
 
     public void setTarget(CannonMountBlockEntity mount, Vec3 targetPos) {
-        if (!(controller.getLevel() instanceof ServerLevel serverLevel)) {
-            return;
-        }
-
-        if (PhysicsHandler.isBlockInShipyard(controller.getLevel(), controller.getBlockPos())) {
-            List<List<Double>> angles = VS2CannonTargeting.calculatePitchAndYawVS2(mount, targetPos, serverLevel);
-            if (angles == null || angles.isEmpty() || angles.get(0).isEmpty()) {
-                return;
-            }
-
-            controller.setInternalTargetAngle(angles.get(0).get(1));
-            controller.setRunning(true);
-            controller.notifyUpdate();
-            controller.setChanged();
-            return;
-        }
-
         Vec3 cannonCenter = controller.isUpsideDown()
                 ? controller.getBlockPos().below(3).getCenter()
                 : controller.getBlockPos().above(3).getCenter();

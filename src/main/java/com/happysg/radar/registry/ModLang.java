@@ -36,7 +36,6 @@ public class ModLang {
         REGISTRATE.addRawLang(CreateRadar.MODID + ".filter.only_mobs", "Only Mobs");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".filter.players_only", "Players Only");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".filter.projectiles_only", "Projectiles Only");
-        REGISTRATE.addRawLang(CreateRadar.MODID + ".filter.vs2_only", "VS2 Only");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".filter.mob_bosses_only", "Mob Bosses Only");
 
 
@@ -56,7 +55,6 @@ public class ModLang {
         REGISTRATE.addRawLang(CreateRadar.MODID + ".data_link.title", "Data Link");
 
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.player", "Player");
-        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.vs2", "VS2");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.contraption", "Contraption");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.mob", "Mob");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.hostile", "Hostile");
@@ -76,7 +74,6 @@ public class ModLang {
         REGISTRATE.addRawLang(CreateRadar.MODID + ".item.safe_zone_designator.end", "Safe Zone Set");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".item.safe_zone_designator.remove", "Safe Zone Removed");
 
-        REGISTRATE.addRawLang(CreateRadar.MODID + ".id_block.not_on_vs2", "VS2 not found");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".id_block.not_on_ship", "Not on a ship");
     }
 }

@@ -21,10 +21,9 @@ import net.minecraft.world.item.ItemStack;
 public class RadarFilterScreen extends AbstractSimiScreen {
 
     private static final String KEY = "detectBools";
-    private static final int COUNT = 7; // set to number of booleans you use
+    private static final int COUNT = 6;
 
     boolean player;
-    boolean vs2;
     boolean contraption;
     boolean mob;
     boolean projectile;
@@ -33,8 +32,6 @@ public class RadarFilterScreen extends AbstractSimiScreen {
 
     protected IconButton playerButton;
     protected Indicator playerIndicator;
-    protected IconButton vs2Button;
-    protected Indicator vs2Indicator;
     protected IconButton contraptionButton;
     protected Indicator contraptionIndicator;
     protected IconButton mobButton;
@@ -95,20 +92,9 @@ public class RadarFilterScreen extends AbstractSimiScreen {
         addRenderableWidget(playerButton);
         addRenderableWidget(playerIndicator);
 
-        vs2Button = new IconButton(guiLeft + 60, guiTop + 38, ModGuiTextures.VS2_BUTTON);
-        vs2Button.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.vs2"));
-        vs2Indicator = new Indicator(guiLeft + 60, guiTop + 31, Component.empty());
-        vs2Indicator.state = vs2 ? Indicator.State.GREEN : Indicator.State.RED;
-        vs2Button.withCallback((x, y) -> {
-            vs2 = !vs2;
-            vs2Indicator.state = vs2 ? Indicator.State.GREEN : Indicator.State.RED;
-        });
-        addRenderableWidget(vs2Button);
-        addRenderableWidget(vs2Indicator);
-
-        contraptionButton = new IconButton(guiLeft + 88, guiTop + 38, ModGuiTextures.CONTRAPTION_BUTTON);
+        contraptionButton = new IconButton(guiLeft + 60, guiTop + 38, ModGuiTextures.CONTRAPTION_BUTTON);
         contraptionButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.contraption"));
-        contraptionIndicator = new Indicator(guiLeft + 88, guiTop + 31, Component.empty());
+        contraptionIndicator = new Indicator(guiLeft + 60, guiTop + 31, Component.empty());
         contraptionIndicator.state = contraption ? Indicator.State.GREEN : Indicator.State.RED;
         contraptionButton.withCallback((x, y) -> {
             contraption = !contraption;
@@ -117,9 +103,9 @@ public class RadarFilterScreen extends AbstractSimiScreen {
         addRenderableWidget(contraptionButton);
         addRenderableWidget(contraptionIndicator);
 
-        mobButton = new IconButton(guiLeft + 116, guiTop + 38, ModGuiTextures.MOB_BUTTON);
+        mobButton = new IconButton(guiLeft + 88, guiTop + 38, ModGuiTextures.MOB_BUTTON);
         mobButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.mob"));
-        mobIndicator = new Indicator(guiLeft + 116, guiTop + 31, Component.empty());
+        mobIndicator = new Indicator(guiLeft + 88, guiTop + 31, Component.empty());
         mobIndicator.state = mob ? Indicator.State.GREEN : Indicator.State.RED;
         mobButton.withCallback((x, y) -> {
             mob = !mob;
@@ -128,9 +114,9 @@ public class RadarFilterScreen extends AbstractSimiScreen {
         addRenderableWidget(mobButton);
         addRenderableWidget(mobIndicator);
 
-        animalButton = new IconButton(guiLeft + 144, guiTop + 38, ModGuiTextures.ANIMAL_BUTTON);
+        animalButton = new IconButton(guiLeft + 116, guiTop + 38, ModGuiTextures.ANIMAL_BUTTON);
         animalButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.animal"));
-        animalIndicator = new Indicator(guiLeft + 144, guiTop + 31, Component.empty());
+        animalIndicator = new Indicator(guiLeft + 116, guiTop + 31, Component.empty());
         animalIndicator.state = animal ? Indicator.State.GREEN : Indicator.State.RED;
         animalButton.withCallback((x, y) -> {
             animal = !animal;
@@ -139,9 +125,9 @@ public class RadarFilterScreen extends AbstractSimiScreen {
         addRenderableWidget(animalButton);
         addRenderableWidget(animalIndicator);
 
-        projectileButton = new IconButton(guiLeft + 172, guiTop + 38, ModGuiTextures.PROJECTILE_BUTTON);
+        projectileButton = new IconButton(guiLeft + 144, guiTop + 38, ModGuiTextures.PROJECTILE_BUTTON);
         projectileButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.projectile"));
-        projectileIndicator = new Indicator(guiLeft + 172, guiTop + 31, Component.empty());
+        projectileIndicator = new Indicator(guiLeft + 144, guiTop + 31, Component.empty());
         projectileIndicator.state = projectile ? Indicator.State.GREEN : Indicator.State.RED;
         projectileButton.withCallback((x, y) -> {
             projectile = !projectile;
@@ -150,9 +136,9 @@ public class RadarFilterScreen extends AbstractSimiScreen {
         addRenderableWidget(projectileButton);
         addRenderableWidget(projectileIndicator);
 
-        itemButton = new IconButton(guiLeft + 200, guiTop + 38, ModGuiTextures.ITEM_BUTTON);
+        itemButton = new IconButton(guiLeft + 172, guiTop + 38, ModGuiTextures.ITEM_BUTTON);
         itemButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.item"));
-        itemIndicator = new Indicator(guiLeft + 200, guiTop + 31, Component.empty());
+        itemIndicator = new Indicator(guiLeft + 172, guiTop + 31, Component.empty());
         itemIndicator.state = item ? Indicator.State.GREEN : Indicator.State.RED;
         itemButton.withCallback((x, y) -> {
             item = !item;
@@ -172,12 +158,11 @@ public class RadarFilterScreen extends AbstractSimiScreen {
             boolean[] arr = BoolNBThelper.loadBooleansFromBytes(stack, KEY, COUNT);
             if (arr.length >= COUNT) {
                 player = arr[0];
-                vs2 = arr[1];
-                contraption = arr[2];
-                mob = arr[3];
-                animal = arr[4];
-                projectile = arr[5];
-                item = arr[6];
+                contraption = arr[1];
+                mob = arr[2];
+                animal = arr[3];
+                projectile = arr[4];
+                item = arr[5];
             }
 
         }
@@ -193,12 +178,11 @@ public class RadarFilterScreen extends AbstractSimiScreen {
         boolean[] flags = new boolean[COUNT];
         ItemStack stack = Minecraft.getInstance().player.getItemInHand(InteractionHand.MAIN_HAND);
         flags[0] = player;
-        flags[1] = vs2;
-        flags[2] = contraption;
-        flags[3] = mob;
-        flags[4] = animal;
-        flags[5] = projectile;
-        flags[6] = item;
+        flags[1] = contraption;
+        flags[2] = mob;
+        flags[3] = animal;
+        flags[4] = projectile;
+        flags[5] = item;
         BoolNBThelper.saveBooleansAsBytes(stack,flags, KEY);
 
         NetworkHandler.CHANNEL.sendToServer(new BoolListPacket(true, flags, KEY));

@@ -1,6 +1,5 @@
 package com.happysg.radar.compat.cbc;
 
-import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
@@ -159,8 +158,7 @@ public class CannonLead {
         double muzzleSpeedPerTick = CannonUtil.getInitialVelocity(cannon, level);
         if (muzzleSpeedPerTick <= 0.0) return null;
 
-        // "Origin" in world space (VS2-aware)
-        Vec3 originNow = PhysicsHandler.getWorldVec(level, mount.getControllerBlockPos().above(2).getCenter());
+        Vec3 originNow = mount.getControllerBlockPos().above(2).getCenter();
         final double latencyTicks = 2.0; // tune 1..3
         int barrelLength = CannonUtil.getBarrelLength(cannon);
 
@@ -285,8 +283,7 @@ public class CannonLead {
         }
 
 
-        // "Origin" in world space (VS2-aware)
-        Vec3 originNow = PhysicsHandler.getWorldVec(level, mount.getControllerBlockPos().above(2).getCenter());
+        Vec3 originNow = mount.getControllerBlockPos().above(2).getCenter();
         int barrelLength = CannonUtil.getBarrelLength(cannon);
 
         BallisticPropertiesComponent bp = CannonUtil.getBallistics(cannon, level);

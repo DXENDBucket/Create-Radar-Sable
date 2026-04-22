@@ -10,13 +10,10 @@ import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import com.happysg.radar.block.radar.bearing.RadarBearingBlock;
-import com.happysg.radar.block.radar.plane.StationaryRadarBlock;
 import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.AllDataBehaviors;
 import com.happysg.radar.registry.ModBlocks;
-import kotlin.reflect.jvm.internal.impl.descriptors.Visibilities;
 import net.createmod.catnip.outliner.Outliner;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -298,8 +295,6 @@ public class DataLinkBlockItem extends BlockItem {
 
                 case RADAR_BEARING -> canAttach = filterData.canAttachRadar(fGroup, clickedPos, NetworkData.RadarKind.BEARING);
 
-                case RADAR_STATIONARY -> canAttach = filterData.canAttachRadar(fGroup, clickedPos, NetworkData.RadarKind.STATIONARY);
-
                 case CONTROLLER -> {
                     if (!(be instanceof AutoPitchControllerBlockEntity)) {
                         player.displayClientMessage(
@@ -386,15 +381,6 @@ public class DataLinkBlockItem extends BlockItem {
                     }
                 }
 
-                case RADAR_STATIONARY -> {
-                    filterData.attachRadar(fGroup, clickedPos, NetworkData.RadarKind.STATIONARY);
-
-                    BlockEntity fbe = serverLevel.getBlockEntity(filtererPos);
-                    if (fbe instanceof com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity nfb) {
-                        nfb.applyFiltersToNetwork();
-                    }
-                }
-
                 case CONTROLLER -> filterData.attachWeaponEndpoint(fGroup, clickedPos, weaponMountPos);
             }
 
@@ -425,8 +411,8 @@ public class DataLinkBlockItem extends BlockItem {
 // -------------------------
 
     private static boolean withinRange(Level level, BlockPos a, BlockPos b, double range) {
-        Vec3 wa = PhysicsHandler.getWorldPos(level, a).getCenter();
-        Vec3 wb = PhysicsHandler.getWorldPos(level, b).getCenter();
+        Vec3 wa = a.getCenter();
+        Vec3 wb = b.getCenter();
         return wa.closerThan(wb, range);
     }
 
@@ -480,7 +466,6 @@ public class DataLinkBlockItem extends BlockItem {
     private enum FilterTargetKind {
         MONITOR,
         RADAR_BEARING,
-        RADAR_STATIONARY,
         CONTROLLER
     }
 
@@ -489,7 +474,6 @@ public class DataLinkBlockItem extends BlockItem {
         if (be instanceof MonitorBlockEntity) return new FilterTarget(FilterTargetKind.MONITOR);
 
         if (state.getBlock() instanceof RadarBearingBlock) return new FilterTarget(FilterTargetKind.RADAR_BEARING);
-        if (state.getBlock() instanceof StationaryRadarBlock) return new FilterTarget(FilterTargetKind.RADAR_STATIONARY);
 
 
         if (getControllerType(be, state) != null) return new FilterTarget(FilterTargetKind.CONTROLLER);

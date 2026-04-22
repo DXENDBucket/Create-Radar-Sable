@@ -8,9 +8,6 @@ import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlock
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.RadarTrackUtil;
-import com.happysg.radar.block.radar.track.TrackCategory;
-import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.block.behavior.networks.config.AutoTargetingHelper;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.api.equipment.goggles.IHaveHoveringInformation;
@@ -33,8 +30,6 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
-import org.valkyrienskies.core.api.ships.Ship;
-import org.valkyrienskies.mod.common.VSGameUtilsKt;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -181,26 +176,6 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         MonitorBlockEntity controllerBe = getController();
         if (controllerBe == null)
             return;
-        if (track != null && track.trackCategory() == TrackCategory.VS2 && "VS2:ship".equals(track.entityType())) {
-            long shipId = 0;
-            try {
-                shipId = Long.parseLong(track.id());
-            } catch (NumberFormatException ignored) {
-                track = null;
-            }
-
-            if (track != null) {
-                Ship ship = VSGameUtilsKt.getShipObjectWorld(sl).getLoadedShips().getById(shipId);
-                if (ship == null) {
-                    track = null;
-                    this.activetrack = null;
-                    this.selectedEntity = null;
-                    reset = true;// i refuse to forward a dead ship selection
-                }else{
-                    reset = false;
-                }
-            }
-        }
 
         LOGGER.debug("MONITOR setSelectedTargetServer: track={}, controllerPos={}", track == null ? "null" : track.getId(), controllerBe.getBlockPos());
 
@@ -418,7 +393,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     @Nullable
     public Vec3 getRadarCenterPos() {
         if (radarPos == null || level == null) return null;
-        return PhysicsHandler.getWorldVec(level, radarPos);
+        return radarPos.getCenter();
     }
 
 
@@ -566,16 +541,6 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 
         tag.put("SafeZones", saveSafeZones());
     }
-
-
-    public Ship getShip(){
-        if(!Mods.VALKYRIENSKIES.isLoaded())return null;
-        Ship ship = VSGameUtilsKt.getShipManagingPos(level,worldPosition);
-        return ship;
-
-    }
-
-
 
     private @NotNull ListTag saveSafeZones() {
         ListTag safeZonesTag = new ListTag();

@@ -1,7 +1,5 @@
 package com.happysg.radar.block.controller.track;
 
-import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.vs2.VS2Utils;
 import com.simibubi.create.content.kinetics.transmission.SplitShaftBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -9,8 +7,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Quaterniondc;
-import org.valkyrienskies.core.api.ships.LoadedShip;
 
 import static com.simibubi.create.content.kinetics.base.HorizontalKineticBlock.HORIZONTAL_FACING;
 
@@ -95,7 +91,7 @@ public class TrackControllerBlockEntity extends SplitShaftBlockEntity {
     private double getAngleToTarget() {
         if (target == null)
             return getYaw();
-        Vec3 center = VS2Utils.getWorldVec(this);
+        Vec3 center = getBlockPos().getCenter();
         Vec3 relative = center.subtract(target);
         double yaw = Math.toDegrees(Math.atan2(relative.z, relative.x)) - 90;
         yaw = (yaw + 360) % 360; // Normalize to range [0, 360)
@@ -107,25 +103,7 @@ public class TrackControllerBlockEntity extends SplitShaftBlockEntity {
     }
 
     private double getAngleOffsetToWorld() {
-        if (!Mods.VALKYRIENSKIES.isLoaded())
-            return 0;
-        LoadedShip ship = VS2Utils.getShipManagingPos(this);
-        if (ship == null)
-            return 0;
-        Quaterniondc quaterniondc = ship.getTransform().getShipToWorldRotation();
-        // Extract yaw directly from quaternion
-        double qw = quaterniondc.w();
-        double qx = quaterniondc.x();
-        double qy = quaterniondc.y();
-        double qz = quaterniondc.z();
-
-        // Calculate yaw in radians
-        double yaw = Math.atan2(2.0 * (qw * qy + qx * qz), 1.0 - 2.0 * (qy * qy + qz * qz));
-
-        // Convert to degrees and normalize to range [-180, 180]
-        yaw = Math.toDegrees(yaw);
-        yaw = (yaw + 360) % 360; // Normalize to range [0, 360)
-        return yaw;
+        return 0;
     }
 
     private double toYRot() {

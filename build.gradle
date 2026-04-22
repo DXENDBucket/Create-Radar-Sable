@@ -5,7 +5,6 @@ plugins {
     id 'org.parchmentmc.librarian.forgegradle' version '1.+'
     id 'org.spongepowered.mixin' version '0.7.+'
     id 'com.gradleup.shadow' version '8.3.5'
-    id 'org.jetbrains.kotlin.jvm'
 }
 
 String buildNumber = System.getenv("GITHUB_RUN_NUMBER")
@@ -95,16 +94,6 @@ repositories {
             includeGroup("com.rbasamoyai")
         }
     }
-    maven {
-        name = 'Kotlin for Forge'
-        url = 'https://thedarkcolour.github.io/KotlinForForge/'
-    }
-
-    maven {
-        name = "Valkyrien Skies"
-        url = "https://maven.valkyrienskies.org"
-    }
-
     maven { url 'https://modmaven.dev/' }
 
 
@@ -120,9 +109,6 @@ repositories {
             includeGroup("cc.tweaked")
         }
     }
-    maven { url = "https://thedarkcolour.github.io/KotlinForForge/" }
-
-
     flatDir {
         dirs 'lib'
     }
@@ -168,24 +154,7 @@ dependencies {
 //    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
     runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
 
-    //Clockwork
-    //replace implementation instead of compileOnly after clockwork is compatible with 6.0
-
-    compileOnly fg.deobf("curse.maven:create-clockwork-807792:7418660")
     compileOnly fg.deobf("maven.modrinth:architectury-api:${architectury_api_version}+forge")
-
-    //Valkyrien Skies
-    compileOnly("org.joml:joml-primitives:1.10.0")
-    compileOnly("maven.modrinth:kotlin-for-forge:${forge_kotlin_version}")
-    compileOnly("org.valkyrienskies.core:api:${vs_core_version}") { transitive = false }
-    compileOnly("org.valkyrienskies.core:impl:${vs_core_version}"){ transitive = false }
-    compileOnly("org.valkyrienskies.core:util:${vs_core_version}"){ transitive = false }
-    compileOnly(fg.deobf("org.valkyrienskies:valkyrienskies-120-forge:${vs2_version}")) {transitive = false}
-
-
-    //trackworks
-    //replace implementation instead of compileOnly after trackworks is compatible with 6.0
-    compileOnly fg.deobf("maven.modrinth:trackwork:${minecraft_version}-${trackwork_version}")
 
     //CC
     // Forge Gradle
@@ -194,7 +163,6 @@ dependencies {
     runtimeOnly(fg.deobf("cc.tweaked:cc-tweaked-$minecraft_version-forge:$cc_tweaked_version"))
 
     annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 
 
 }
@@ -245,7 +213,4 @@ tasks.named('jar', Jar).configure {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
-}
-kotlin {
-    jvmToolchain(17)
 }

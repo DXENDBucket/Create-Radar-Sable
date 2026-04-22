@@ -1,14 +1,9 @@
 package com.happysg.radar.block.radar.behavior;
 
-import com.happysg.radar.block.arad.aradnetworks.RadarContactRegistry;
 import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 
 import com.happysg.radar.block.radar.track.RadarTrack;
-import com.happysg.radar.block.radar.track.RadarTrackUtil;
 import com.happysg.radar.block.radar.track.TrackCategory;
-import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.vs2.PhysicsHandler;
-import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
@@ -25,9 +20,7 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.valkyrienskies.core.api.ships.Ship;
 
-import java.lang.reflect.Method;
 import java.util.*;
 
 public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
@@ -45,7 +38,6 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     Vec3 scanPos = Vec3.ZERO;
 
     private final Set<Entity> scannedEntities = new HashSet<>();
-    private final Set<Ship> scannedShips = new HashSet<>();
     private final Set<Projectile> scannedProjectiles = new HashSet<>();
     private final HashMap<String, RadarTrack> radarTracks = new HashMap<>();
 
@@ -58,7 +50,6 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         if (cfg == null) cfg = DetectionConfig.DEFAULT;
         setScanFlags(
                 cfg.player(),
-                cfg.vs2(),
                 cfg.contraption(),
                 cfg.mob(),
                 cfg.animal(),
@@ -69,7 +60,6 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
 
 
     private boolean scanPlayers = true;
-    private boolean scanVS2 = true;
     private boolean scanContraptions = true;
     private boolean scanMobs = true;
     private boolean scanAnimals = true;
@@ -79,7 +69,6 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     private boolean allowCategory(TrackCategory c) {
         return switch (c) {
             case PLAYER -> scanPlayers;
-            case VS2 -> scanVS2;
             case CONTRAPTION -> scanContraptions;
             case PROJECTILE -> scanProjectiles;
             case ITEM -> scanItems;
@@ -95,11 +84,10 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         radarTracks.entrySet().removeIf(e -> !allowCategory(e.getValue().trackCategory()));
     }
 
-    public void setScanFlags(boolean players, boolean vs2, boolean contraptions, boolean mobs, boolean animals, boolean projectiles, boolean items) {
-        boolean changed = players != scanPlayers || vs2 != scanVS2 || contraptions != scanContraptions || mobs != scanMobs || animals != scanAnimals || projectiles != scanProjectiles || items != scanItems;
+    public void setScanFlags(boolean players, boolean contraptions, boolean mobs, boolean animals, boolean projectiles, boolean items) {
+        boolean changed = players != scanPlayers || contraptions != scanContraptions || mobs != scanMobs || animals != scanAnimals || projectiles != scanProjectiles || items != scanItems;
 
         this.scanPlayers = players;
-        this.scanVS2 = vs2;
         this.scanContraptions = contraptions;
         this.scanMobs = mobs;
         this.scanAnimals = animals;
@@ -122,21 +110,16 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
             updateRadarTracks();
         if (running) {
             scannedEntities.clear();
-            scannedShips.clear();
             scannedProjectiles.clear();
 
             scanForEntityTracks();
-            if (Mods.VALKYRIENSKIES.isLoaded() && scanVS2)
-                scanForVSTracks();
         }
     }
 
 
     private void updateRadarTracks() {
-        scanPos = PhysicsHandler.getWorldPos(bearingEntity).getCenter();
+        scanPos = bearingEntity.getBlockPos().getCenter();
         Level level = blockEntity.getLevel();
-        boolean isServer = level instanceof net.minecraft.server.level.ServerLevel;
-        net.minecraft.server.level.ServerLevel sl = isServer ? (net.minecraft.server.level.ServerLevel) level : null;
         if (level == null )return;
 
 
@@ -150,23 +133,6 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
 
                 if (entity instanceof Projectile)
                     scannedProjectiles.add((Projectile) entity);
-            }
-        }
-
-        for (Ship ship : scannedShips) {
-            Vec3 pos = RadarTrackUtil.getPosition(ship);
-            if (isInFovAndRange(pos)) {
-
-                long key = ship.getId();
-
-                radarTracks.compute(ship.getSlug(), (id, track) -> {
-                    if (track == null) return RadarTrackUtil.getRadarTrack(ship, level);
-                    track.updateRadarTrack(ship, level);
-                    return track;
-                });
-                if (isServer) {
-                    RadarContactRegistry.markInRange(sl, key, 20);
-                }
             }
         }
     }
@@ -195,19 +161,6 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         for (Entity entity : scannedEntities) {
             if (!entity.isAlive())
                 radarTracks.remove(entity.getUUID().toString());
-        }
-
-        // vs2 ships
-        if (Mods.VALKYRIENSKIES.isLoaded()) {
-            assert blockEntity.getLevel() != null;
-
-            var shipWorld = org.valkyrienskies.mod.common.VSGameUtilsKt.getShipObjectWorld(blockEntity.getLevel());
-            // i remove ship tracks if the ship id no longer resolves (unloaded/despawned)
-            scannedShips.removeIf(ship -> {
-                boolean dead = shipWorld == null || shipWorld.getLoadedShips().getById(ship.getId()) == null;
-                if (dead) radarTracks.remove(String.valueOf(ship.getId()));
-                return dead;
-            });
         }
 
         // ttl expiration (works for everything: entities, ships, projectiles)
@@ -262,15 +215,8 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         }
     }
 
-    private void scanForVSTracks() {
-        if (blockEntity.getLevel() == null || !Mods.VALKYRIENSKIES.isLoaded()) return;
-        splitAABB(getRadarAABB(), 256).forEach(aabb ->
-                VS2Utils.getLoadedShips(blockEntity.getLevel(), aabb).forEach(scannedShips::add));
-
-        scannedShips.remove(VS2Utils.getShipManagingPos(blockEntity));
-    }
     private AABB getRadarAABB() {
-        BlockPos radarPos = PhysicsHandler.getWorldPos(blockEntity);
+        BlockPos radarPos = blockEntity.getBlockPos();
         double x = radarPos.getX() + 0.5;
         double y = radarPos.getY() + 0.5;
         double z = radarPos.getZ() + 0.5;

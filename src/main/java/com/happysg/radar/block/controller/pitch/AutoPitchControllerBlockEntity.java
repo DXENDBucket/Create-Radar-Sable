@@ -22,7 +22,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
-import org.valkyrienskies.clockwork.content.contraptions.phys.bearing.PhysBearingBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 
 import javax.annotation.Nullable;
@@ -33,7 +32,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final double CBC_TOLERANCE = 0.1;
-    private static final double PHYS_TOLERANCE_DEG = 0.1;
     private static final double DEADBAND_DEG = 0.25;
 
     private double minAngleDeg = -90.0;
@@ -62,12 +60,10 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     private boolean mountDirty = true;
 
     private final CannonMountPitch cannonHandler;
-    private final PhysBearingPitch physHandler;
 
     public AutoPitchControllerBlockEntity(BlockEntityType<?> typeIn, BlockPos pos, BlockState state) {
         super(typeIn, pos, state);
         this.cannonHandler = new CannonMountPitch(this);
-        this.physHandler = new PhysBearingPitch(this);
     }
 
     @Override
@@ -94,14 +90,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
         }
 
-        if (mount.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
-            cannonHandler.tick(mount.cbc);
-            return;
-        }
-
-        if (mount.kind == MountKind.PHYS && Mods.VS_CLOCKWORK.isLoaded()) {
-            physHandler.tick(mount.phys);
-        }
+        cannonHandler.tick(mount.cbc);
     }
 
     public void getFiringControl() {
@@ -165,8 +154,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         this.targetAngle = angle;
         this.isRunning = true;
 
-        physHandler.reset();
-
         notifyUpdate();
         setChanged();
     }
@@ -183,7 +170,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         if (targetPos == null) {
             isRunning = false;
             lastTargetPos = null;
-            physHandler.reset();
 
             notifyUpdate();
             setChanged();
@@ -195,14 +181,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
         }
 
-        if (mount.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
-            cannonHandler.setTarget(mount.cbc, targetPos);
-            return;
-        }
-
-        if (mount.kind == MountKind.PHYS && Mods.VS_CLOCKWORK.isLoaded()) {
-            physHandler.setTarget(mount.phys, targetPos);
-        }
+        cannonHandler.setTarget(mount.cbc, targetPos);
     }
 
     public boolean atTargetPitch(boolean lag) {
@@ -215,15 +194,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return false;
         }
 
-        if (mount.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
-            return cannonHandler.atTargetPitch(mount.cbc, lag);
-        }
-
-        if (mount.kind == MountKind.PHYS && Mods.VS_CLOCKWORK.isLoaded()) {
-            return physHandler.atTargetPitch(mount.phys, lag);
-        }
-
-        return false;
+        return cannonHandler.atTargetPitch(mount.cbc, lag);
     }
 
     public void setAndAcquireTrack(@Nullable RadarTrack tTrack, TargetingConfig config) {
@@ -315,11 +286,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return 0;
         }
 
-        if (mount.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
-            return cannonHandler.getMaxEngagementRangeBlocks(mount.cbc, sl);
-        }
-
-        return 0;
+        return cannonHandler.getMaxEngagementRangeBlocks(mount.cbc, sl);
     }
 
     @Nullable
@@ -357,11 +324,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return false;
         }
 
-        if (mount.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
-            return cannonHandler.canEngageTrack(mount.cbc, track, requireLos, sl);
-        }
-
-        return firingControl.hasLineOfSightTo(track, requireLos);
+        return cannonHandler.canEngageTrack(mount.cbc, track, requireLos, sl);
     }
 
     @Nullable
@@ -418,8 +381,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
 
             if (Mods.CREATEBIGCANNONS.isLoaded() && be instanceof CannonMountBlockEntity cbc) {
                 newMount = Mount.cbc(cbc);
-            } else if (Mods.VS_CLOCKWORK.isLoaded() && be instanceof PhysBearingBlockEntity phys) {
-                newMount = Mount.phys(phys);
             }
         }
 
@@ -429,7 +390,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         if (newMount == null) {
             isRunning = false;
             lastTargetPos = null;
-            physHandler.reset();
         }
 
         setChanged();
@@ -454,17 +414,11 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     }
 
     public void setMinAngleDeg(double v) {
-        Mount mount = resolveMount();
-
-        if (mount != null && mount.kind == MountKind.PHYS) {
-            minAngleDeg = wrap360(v);
-        } else {
-            minAngleDeg = v;
-            if (minAngleDeg > maxAngleDeg) {
-                double tmp = minAngleDeg;
-                minAngleDeg = maxAngleDeg;
-                maxAngleDeg = tmp;
-            }
+        minAngleDeg = v;
+        if (minAngleDeg > maxAngleDeg) {
+            double tmp = minAngleDeg;
+            minAngleDeg = maxAngleDeg;
+            maxAngleDeg = tmp;
         }
 
         notifyUpdate();
@@ -472,17 +426,11 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     }
 
     public void setMaxAngleDeg(double v) {
-        Mount mount = resolveMount();
-
-        if (mount != null && mount.kind == MountKind.PHYS) {
-            maxAngleDeg = wrap360(v);
-        } else {
-            maxAngleDeg = v;
-            if (minAngleDeg > maxAngleDeg) {
-                double tmp = minAngleDeg;
-                minAngleDeg = maxAngleDeg;
-                maxAngleDeg = tmp;
-            }
+        maxAngleDeg = v;
+        if (minAngleDeg > maxAngleDeg) {
+            double tmp = minAngleDeg;
+            minAngleDeg = maxAngleDeg;
+            maxAngleDeg = tmp;
         }
 
         notifyUpdate();
@@ -517,7 +465,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         }
 
         lastTargetPos = null;
-        physHandler.read(compound);
     }
 
     @Override
@@ -529,8 +476,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         compound.putBoolean("IsRunning", isRunning);
         compound.putDouble("MinAngleDeg", minAngleDeg);
         compound.putDouble("MaxAngleDeg", maxAngleDeg);
-
-        physHandler.write(compound);
     }
 
     public static Entity getEntityByUUID(ServerLevel level, UUID uuid) {
@@ -566,10 +511,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         return CBC_TOLERANCE;
     }
 
-    static double getPhysToleranceDeg() {
-        return PHYS_TOLERANCE_DEG;
-    }
-
     static double getDeadbandDeg() {
         return DEADBAND_DEG;
     }
@@ -599,28 +540,15 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         return lastContinuous + shortestDelta(lastWrapped, newWrapped);
     }
 
-    enum MountKind {
-        CBC,
-        PHYS
-    }
-
     static class Mount {
-        final MountKind kind;
         final CannonMountBlockEntity cbc;
-        final PhysBearingBlockEntity phys;
 
-        private Mount(MountKind kind, @Nullable CannonMountBlockEntity cbc, @Nullable PhysBearingBlockEntity phys) {
-            this.kind = kind;
+        private Mount(CannonMountBlockEntity cbc) {
             this.cbc = cbc;
-            this.phys = phys;
         }
 
         static Mount cbc(CannonMountBlockEntity cbc) {
-            return new Mount(MountKind.CBC, cbc, null);
-        }
-
-        static Mount phys(PhysBearingBlockEntity phys) {
-            return new Mount(MountKind.PHYS, null, phys);
+            return new Mount(cbc);
         }
     }
 }

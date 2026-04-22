@@ -1,12 +1,8 @@
 package com.happysg.radar.block.controller.pitch;
 
 import com.happysg.radar.block.radar.track.RadarTrack;
-import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.CannonTargeting;
 import com.happysg.radar.compat.cbc.CannonUtil;
-import com.happysg.radar.compat.cbc.VS2CannonTargeting;
-import com.happysg.radar.compat.vs2.PhysicsHandler;
-import com.happysg.radar.compat.vs2.VS2Utils;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
@@ -93,26 +89,15 @@ public class CannonMountPitch {
         double max = controller.getMaxEngagementRangeBlocks();
         if (max > 0.0) {
             Vec3 start = controller.firingControl.getCannonRayStart();
-            if (Mods.VALKYRIENSKIES.isLoaded() && PhysicsHandler.isBlockInShipyard(controller.getLevel(), controller.getBlockPos())) {
-                start = PhysicsHandler.getWorldVec(controller.getLevel(), start);
-            }
             if (start.distanceToSqr(p) > (max * max)) {
                 return false;
             }
         }
 
-        if (Mods.VALKYRIENSKIES.isLoaded() && PhysicsHandler.isBlockInShipyard(controller.getLevel(), controller.getBlockPos())) {
-            Vec3 mountPos = VS2Utils.getWorldVec(controller.getLevel(), mount.getBlockPos().getCenter());
-            List<List<Double>> angles = VS2CannonTargeting.calculatePitchAndYawVS2(mount, p, sl);
-            if (angles == null || angles.isEmpty() || angles.get(0).isEmpty()) {
-                return false;
-            }
-        } else {
-            Vec3 origin = controller.getRayStart();
-            List<Double> pitches = CannonTargeting.calculatePitch(mount, origin, p, sl);
-            if (pitches == null || pitches.isEmpty()) {
-                return false;
-            }
+        Vec3 origin = controller.getRayStart();
+        List<Double> pitches = CannonTargeting.calculatePitch(mount, origin, p, sl);
+        if (pitches == null || pitches.isEmpty()) {
+            return false;
         }
 
         return controller.firingControl.hasLineOfSightTo(track, requireLos);
@@ -183,20 +168,6 @@ public class CannonMountPitch {
 
     private void setTargetCBC(CannonMountBlockEntity mount, Vec3 targetPos) {
         if (!(controller.getLevel() instanceof ServerLevel serverLevel)) {
-            return;
-        }
-
-        if (PhysicsHandler.isBlockInShipyard(controller.getLevel(), controller.getBlockPos())) {
-            List<List<Double>> angles = VS2CannonTargeting.calculatePitchAndYawVS2(mount, targetPos, serverLevel);
-            if (angles == null || angles.isEmpty() || angles.get(0).isEmpty()) {
-                LOGGER.warn("ping-3{}", angles);
-                return;
-            }
-
-            controller.setInternalTargetAngle(angles.get(0).get(0));
-            controller.setRunning(true);
-            controller.notifyUpdate();
-            controller.setChanged();
             return;
         }
 

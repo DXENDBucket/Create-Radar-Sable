@@ -3,7 +3,6 @@ package com.happysg.radar.networking.packets;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.item.binos.Binoculars;
 import net.minecraft.core.BlockPos;
@@ -79,10 +78,6 @@ public class RaycastPacket {
         for (double t = 0.0; t <= maxDistance; t += step) {
             Vec3 p = start.add(dir.scale(t));
             BlockPos pos = BlockPos.containing(p);
-            if(Mods.VALKYRIENSKIES.isLoaded() && VS2Utils.isBlockInShipyard(level,pos)){
-                pos =  VS2Utils.getWorldPos(level,pos);
-            }
-
             if (pos.equals(lastPos)) continue;
             lastPos = pos;
 

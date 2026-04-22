@@ -6,7 +6,6 @@ import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import dev.engine_room.flywheel.lib.transform.TransformStack;
 import net.createmod.catnip.gui.AbstractSimiScreen;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -18,7 +17,6 @@ public class IdentificationFilterScreen extends AbstractSimiScreen {
 
     protected IconButton  playerFilter;
 
-    protected IconButton shipFilter;
     protected IconButton confirmButton;
     protected ModGuiTextures background;
     public IdentificationFilterScreen() {
@@ -61,11 +59,6 @@ public class IdentificationFilterScreen extends AbstractSimiScreen {
         playerFilter.withCallback(() -> Minecraft.getInstance().setScreen(new PlayerListScreen()));
         addRenderableWidget(playerFilter);
 
-
-        shipFilter = new IconButton(guiLeft + 108, guiTop + 25, ModGuiTextures.FILTER_BUTTON);
-        shipFilter.setToolTip(Component.translatable(MODID + ".radar_button.ship"));
-        shipFilter.withCallback(() -> Minecraft.getInstance().setScreen(new ShipListScreen()));
-        addRenderableWidget(shipFilter);
         confirmButton = new IconButton(x + background.width - 33, y + background.height - 24, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::onClose);
         addRenderableWidget(confirmButton);

@@ -4,7 +4,6 @@ import com.happysg.radar.CreateRadar;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.CBCCompatRegister;
 import com.happysg.radar.compat.cbcmw.CBCMWCompatRegister;
-import com.happysg.radar.compat.vs2.VS2CompatRegister;
 import net.minecraft.network.chat.Component;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -88,15 +87,6 @@ public class ModCreativeTabs {
 
         if (Mods.CBCMODERNWARFARE.isLoaded()) {
             pOutput.accept(CBCMWCompatRegister.RADAR_GUIDANCE_BLOCK);
-        }
-        if (Mods.TRACKWORK.isLoaded()) {
-
-        }
-        if (Mods.VALKYRIENSKIES.isLoaded()) {
-            pOutput.accept(VS2CompatRegister.ID_BLOCK);
-            pOutput.accept(VS2CompatRegister.STATIONARY_RADAR);
-            pOutput.accept(VS2CompatRegister.RWR_BLOCK);
-
         }
     }
 

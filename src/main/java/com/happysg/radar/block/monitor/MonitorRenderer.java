@@ -1,12 +1,9 @@
 package com.happysg.radar.block.monitor;
 
 import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
-import com.happysg.radar.block.controller.id.IDManager;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.TrackCategory;
-import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.ModRenderTypes;
 import com.mojang.logging.LogUtils;
@@ -28,10 +25,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
-import org.joml.Quaterniond;
-import org.joml.Vector3d;
 import org.slf4j.Logger;
-import org.valkyrienskies.core.api.ships.Ship;
 
 import java.util.List;
 import java.util.UUID;
@@ -251,22 +245,8 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         float scale = radar.getRange();
         int size = monitor.getSize();
 
-        // i treat both positions as world positions here
-        Vec3 radarPos = PhysicsHandler.getWorldPos(monitor.getLevel(), radar.getWorldPos()).getCenter();
+        Vec3 radarPos = radar.getWorldPos().getCenter();
         Vec3 relativePos = track.position().subtract(radarPos);
-
-        // if we're rendering relative to the monitor, and the monitor is on a ship,
-        // rotate the relative vector into ship-local axes so the screen rotates with the ship
-        if (radar.renderRelativeToMonitor()) {
-            if(!Mods.VALKYRIENSKIES.isLoaded())return;
-            Ship ship = monitor.getShip();
-            if (ship != null) {
-                // i keep the cone "north-up" by counter-rotating track vectors by the ship yaw
-                double shipYawRad = getShipYawRad(ship);
-                relativePos = rotateAroundY(relativePos, -(shipYawRad + Math.PI));
-
-            }
-        }
         // Transform to display coordinates
         float xOff = calculateTrackOffset(relativePos, monitorFacing, scale, true);
         float zOff = calculateTrackOffset(relativePos, monitorFacing, scale, false);
@@ -333,54 +313,6 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
             renderTrackLabel(ms, bufferSource, slug, xCenter, zBelow, depth, alpha);
         }
     }
-    private  Vec3 rotateAroundY(Vec3 v, double angleRad) {
-        double cos = Math.cos(angleRad);
-        double sin = Math.sin(angleRad);
-
-        // i rotate around world up (Y). this makes tracks orbit when the ship turns
-        double x = v.x * cos - v.z * sin;
-        double z = v.x * sin + v.z * cos;
-
-        return new Vec3(x, v.y, z);
-    }
-
-    /**
-     * i compute ship yaw only (around world Y) relative to world NORTH (-Z).
-     * result is radians, where 0 means ship forward points toward north ( -Z ).
-     */
-    private  double getShipYawRad(Ship ship) {
-        var transform = ship.getTransform();
-
-        Quaterniond shipToWorld = new Quaterniond();
-        try {
-            shipToWorld.set(transform.getShipToWorldRotation());
-        } catch (Throwable ignored) {
-            // if mappings differ, fall back to the inverse of worldToShip
-            shipToWorld.set(transform.getRotation()).invert();
-        }
-
-        // i ask: "where does the ship's local +Z (forward) point in the world?"
-        Vector3d fwd = new Vector3d(0, 0, 1);
-        shipToWorld.transform(fwd);
-
-        // yaw relative to north (-Z):
-        // when fwd is (0,0,-1) => atan2(0, 1) = 0 rad  (north)
-        // when fwd is (1,0,0)  => atan2(1, 0) = +pi/2 (east)
-        return Math.atan2(fwd.x, -fwd.z);
-    }
-    private  Vec3 rotateWorldVecIntoShipFrame(Ship ship, Vec3 worldVec) {
-        var transform = ship.getTransform();
-
-        Quaterniond worldToShip = new Quaterniond();
-        worldToShip.set(transform.getRotation());
-
-        Vector3d v = new Vector3d(worldVec.x, worldVec.y, worldVec.z);
-        worldToShip.transform(v);
-
-        return new Vec3(v.x, v.y, v.z);
-    }
-
-
     /**
      * Calculates the offset for a track on the display
      */
@@ -428,7 +360,7 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
     private Vec3 transformWorldToRadar(double x, double y, double z, IRadar radar,
                                        MonitorBlockEntity monitor, Direction facing,
                                        float range, int size) {
-        Vec3 radarPos = PhysicsHandler.getWorldPos(monitor.getLevel(), radar.getWorldPos()).getCenter();
+        Vec3 radarPos = radar.getWorldPos().getCenter();
         Vec3 relativePos = new Vec3(x, y, z).subtract(radarPos);
 
         float xOff = calculateTrackOffset(relativePos, facing, range, true) * TRACK_POSITION_SCALE;
@@ -524,37 +456,8 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         Color color = new Color(RadarConfig.client().groundRadarColor.get());
 
         float monitorAngle = 0;
-        if (controller.getShip() != null && radar.getRadarType().equals("spinning")) { // spinning radar on a ship
-            // Calculate the current angle
-            Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
-            Vec3 facingVec = new Vec3(monitorFacing.getStepX(), monitorFacing.getStepY(), monitorFacing.getStepZ());
-            Vec3 angleVec = PhysicsHandler.getWorldVecDirectionTransform(facingVec, controller);
-            monitorAngle = (float) Math.toDegrees(Math.atan2(angleVec.x, angleVec.z));
-
-            if (monitorFacing == Direction.NORTH || monitorFacing == Direction.SOUTH) {
-                monitorAngle = (monitorAngle + 180) % 360;
-            }
-
-            // Normalize to positive angles
-            monitorAngle = (monitorAngle + 360 + 180) % 360;
-        }
         float currentAngle;
-        if(radar.renderRelativeToMonitor() && controller.getShip() != null && !radar.getRadarType().equals("spinning")){  // plane radar on a ship
-            // Plane radar on ship - cone stays fixed, tracks rotate inside
-            Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
-            Direction radarFacing   = radar.getradarDirection();
-            if(radarFacing == null)return;
-
-            ConeDir2D cone = getConeDirectionOnMonitor(monitorFacing, radarFacing);
-            switch (cone){
-                case NORTH -> currentAngle = 0;
-                case DOWN -> currentAngle = 180;
-                case LEFT -> currentAngle = 90;
-                case RIGHT -> currentAngle = 270;
-                default -> currentAngle = 30;
-            }
-
-        }else{ // ground based spinning radar
+        { // ground based spinning radar
             Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
             // Global angle is already in world space; only align world-north to monitor.
             Direction radarFacing   = Direction.NORTH;
@@ -671,24 +574,6 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
 
     private String getSlugForTrack(RadarTrack track, MonitorBlockEntity mon) {
         if (mon.getLevel() == null) return null;
-
-        if ("VS2:ship".equals(track.entityType())) {
-            long shipId;
-            try {
-                shipId = Long.parseLong(track.id());
-            } catch (NumberFormatException ignored) {
-                return null;
-            }
-
-            IDManager.IDRecord rec = IDManager.getIDRecordByShipId(shipId);
-            if (rec != null) {
-                String storedName = rec.name();
-                if (storedName != null && !storedName.isBlank())
-                    return storedName;
-            }
-
-
-        }
 
         // Players: null-safe
         if (track.trackCategory() == TrackCategory.PLAYER) {

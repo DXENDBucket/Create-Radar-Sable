@@ -1,8 +1,7 @@
-package com.happysg.radar.registry;
+﻿package com.happysg.radar.registry;
 
 import com.happysg.radar.block.behavior.networks.NetworkData;
 import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
-import com.happysg.radar.block.controller.id.IDManager;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.config.RadarConfig;
@@ -34,7 +33,6 @@ import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.versions.forge.ForgeVersion;
 
 import javax.annotation.Nullable;
-import java.awt.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -91,14 +89,6 @@ public class  ModCommands {
                                         .executes(ctx -> dumpWeaponEndpoints(ctx.getSource()))
                                 )
                         )
-        );
-        dispatcher.register(
-                Commands.literal("radar")
-                        .then(Commands.literal("debug")
-                        .then(Commands.literal("list_ship_ids")
-                                .requires(src -> src.hasPermission(2)) // OP only
-                                .executes(ctx -> listShipIds(ctx.getSource()))
-                        ))
         );
         dispatcher.register(
                 Commands.literal("radar")
@@ -239,36 +229,6 @@ public class  ModCommands {
 
         return 1;
     }
-
-    private static int listShipIds(CommandSourceStack source) {
-        if (IDManager.ID_RECORDS.isEmpty()) {
-            source.sendSuccess(
-                    () -> Component.literal("No VS2 ship ID records found.")
-                            .withStyle(ChatFormatting.GRAY),
-                    false
-            );
-            return 1;
-        }
-
-        source.sendSuccess(
-                () -> Component.literal("VS2 Ship IFF Records:")
-                        .withStyle(ChatFormatting.GOLD),
-                false
-        );
-
-        IDManager.ID_RECORDS.forEach((slug, record) -> {
-            Component line = Component.literal("• ")
-                    .withStyle(ChatFormatting.DARK_GRAY)
-                    .append(Component.literal(String.valueOf(slug)).withStyle(ChatFormatting.AQUA))
-                    .append(Component.literal(" | name="))
-                    .append(Component.literal(record.name()).withStyle(ChatFormatting.GREEN))
-                    .append(Component.literal(" | secret="))
-                    .append(Component.literal(record.secretID()).withStyle(ChatFormatting.RED));
-            source.sendSuccess(() -> line, false);
-        });
-        return IDManager.ID_RECORDS.size();
-    }
-
 
     private static int dumpLinks(CommandSourceStack source) {
         ServerLevel level = source.getLevel();
@@ -521,11 +481,6 @@ public class  ModCommands {
 
             out.add("");
             out.add("=== Radar Output ===");
-            out.add("");
-            out.add("=== radar list_ship_ids ===");
-            out.addAll(runAndCapture(source, "radar debug list_ship_ids"));
-            out.add("");
-
             out.add("=== radar dump_links ===");
             out.addAll(runAndCapture(source, "radar debug dump_links"));
             out.add("");

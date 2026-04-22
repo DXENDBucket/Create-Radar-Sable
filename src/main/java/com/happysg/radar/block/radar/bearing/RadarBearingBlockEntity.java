@@ -8,9 +8,6 @@ import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.behavior.RadarScanningBlockBehavior;
 import com.happysg.radar.block.radar.track.RadarTrack;
-import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.vs2.PhysicsHandler;
-import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.contraptions.AssemblyException;
@@ -32,7 +29,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
-import java.security.PublicKey;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -191,7 +187,7 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
         receiverFacing = getContraption().map(RadarContraption::getReceiverFacing).orElse(Direction.NORTH);
         creative = getContraption().map(RadarContraption::isCreative).orElse(false);
         scanningBehavior.setRange(getRange());
-        scanningBehavior.setScanPos(PhysicsHandler.getWorldVec(this));
+        scanningBehavior.setScanPos(getBlockPos().getCenter());
         scanningBehavior.setRunning(running);
         scanningBehavior.setAngle(getGlobalAngle());
         notifyUpdate();
@@ -298,8 +294,7 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
     }
     @Override
     public boolean renderRelativeToMonitor(){
-        if(!Mods.VALKYRIENSKIES.isLoaded()) return false;
-        return (VS2Utils.isBlockInShipyard(level,getBlockPos()));
+        return false;
     }
     @Override
     public Direction getradarDirection() {

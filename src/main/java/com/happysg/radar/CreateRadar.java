@@ -1,11 +1,9 @@
 package com.happysg.radar;
 
-import com.happysg.radar.block.controller.id.IDManager;
 import com.happysg.radar.block.datalink.DataLinkBlockItem;
 import com.happysg.radar.block.monitor.MonitorInputHandler;
 import com.happysg.radar.compat.cbcwpf.CBCWPFCompatRegister;
 import com.happysg.radar.compat.computercraft.CCCompatRegister;
-import com.happysg.radar.compat.vs2.VS2CompatRegister;
 import com.happysg.radar.ponder.RadarPonderPlugin;
 import com.happysg.radar.registry.ModCommands;
 
@@ -31,13 +29,11 @@ import net.createmod.ponder.foundation.PonderIndex;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.level.LevelAccessor;
 
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModContainer;
@@ -98,7 +94,6 @@ public class CreateRadar {
                 () -> new ConfigScreenHandler.ConfigScreenFactory(RadarConfig::createConfigScreen));
 
         MinecraftForge.EVENT_BUS.addListener(CreateRadar::clientTick);
-        MinecraftForge.EVENT_BUS.addListener(CreateRadar::onLoadWorld);
         ModSounds.register(modEventBus);
 
         // Compat modules
@@ -110,10 +105,6 @@ public class CreateRadar {
             CCCompatRegister.registerPeripherals();
         if (Mods.SHUPAPIUM.isLoaded())
             CBCWPFCompatRegister.registerCBCWPF();
-        if(Mods.VALKYRIENSKIES.isLoaded()){
-            VS2CompatRegister.registerVS2();
-        }
-
     }
     @SubscribeEvent
     public static void commonSetup(FMLCommonSetupEvent event) {
@@ -152,12 +143,6 @@ public class CreateRadar {
 
     }
 
-    public static void onLoadWorld(LevelEvent.Load event) {
-        LevelAccessor world = event.getLevel();
-        if (world.getServer() != null) {
-            IDManager.load(world.getServer());
-        }
-    }
     public static void init(final FMLCommonSetupEvent event) {
 
         event.enqueueWork(() -> {

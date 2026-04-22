@@ -1,7 +1,6 @@
 package com.happysg.radar.block.behavior.networks.config;
 
 import com.happysg.radar.block.radar.track.TrackCategory;
-import com.happysg.radar.compat.Mods;
 import net.minecraft.nbt.CompoundTag;
 
 public record TargetingConfig(boolean player, boolean contraption, boolean mob, boolean animal, boolean projectile,
@@ -50,25 +49,13 @@ public record TargetingConfig(boolean player, boolean contraption, boolean mob, 
     }
 
     public boolean test(TrackCategory trackCategory) {
-        if(Mods.VALKYRIENSKIES.isLoaded()){
-            return switch (trackCategory) {
-                case PLAYER -> player;
-                case VS2 -> contraption;
-                case CONTRAPTION -> false;
-                case HOSTILE -> mob;
-                case ANIMAL -> animal;
-                case PROJECTILE -> projectile;
-                default -> false;
-            };
-        }else {
-            return switch (trackCategory) {
-                case PLAYER -> player;
-                case CONTRAPTION -> contraption;
-                case HOSTILE -> mob;
-                case ANIMAL -> animal;
-                case PROJECTILE -> projectile;
-                default -> false;
-            };
-        }
+        return switch (trackCategory) {
+            case PLAYER -> player;
+            case CONTRAPTION -> contraption;
+            case HOSTILE -> mob;
+            case ANIMAL -> animal;
+            case PROJECTILE -> projectile;
+            default -> false;
+        };
     }
 }
