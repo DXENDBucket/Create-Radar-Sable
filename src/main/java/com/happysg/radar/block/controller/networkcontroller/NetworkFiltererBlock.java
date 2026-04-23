@@ -19,6 +19,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -83,147 +84,127 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
     }
 
     @Override
-    public @NotNull InteractionResult use(BlockState state, Level world, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
-            ItemStack held = player.getItemInHand(hand);
-        if(held.is(ModItems.BINOCULARS.asItem())){
-            return InteractionResult.SUCCESS;
+    protected @NotNull InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos, Player player, BlockHitResult hit) {
+        if (world.isClientSide) return InteractionResult.SUCCESS;
+
+        Vec3 hitVec = hit.getLocation();
+        double dx = hitVec.x - pos.getX();
+        double dy = hitVec.y - pos.getY();
+        double dz = hitVec.z - pos.getZ();
+
+        Direction face = hit.getDirection();
+
+        double clickU = 0.0;
+        double clickV = 0.0;
+        switch (face) {
+            case NORTH -> {
+                clickU = dx * 16.0;
+                clickV = (1.0 - dy) * 16.0;
+            }
+            case SOUTH -> {
+                clickU = (1.0 - dx) * 16.0;
+                clickV = (1.0 - dy) * 16.0;
+            }
+            case WEST -> {
+                clickU = (1.0 - dz) * 16.0;
+                clickV = (1.0 - dy) * 16.0;
+            }
+            case EAST -> {
+                clickU = dz * 16.0;
+                clickV = (1.0 - dy) * 16.0;
+            }
+            case UP -> {
+                clickU = dx * 16.0;
+                clickV = (1.0 - dz) * 16.0;
+            }
+            case DOWN -> {
+                clickU = dx * 16.0;
+                clickV = dz * 16.0;
+            }
         }
-        if (held.isEmpty()) {
-            // client: play hand animation and bail early (server does the work)
-            if (world.isClientSide) return InteractionResult.SUCCESS;
 
-            // local hit coordinates (0..1 inside the block)
-            Vec3 hitVec = hit.getLocation();
-            double dx = hitVec.x - pos.getX();
-            double dy = hitVec.y - pos.getY();
-            double dz = hitVec.z - pos.getZ();
+        final double[][] UVS = {{5.0, 11.0}, {11.0, 11.0}, {11.0, 5.0}};
+        final double PIXEL_THRESHOLD = 2.5;
 
-            Direction face = hit.getDirection();
-
-            // compute clicked UV in 0..16 depending on face (matches renderer mapping)
-            double clickU = 0.0;
-            double clickV = 0.0;
-            switch (face) {
-                case NORTH -> { // -Z
-                    clickU = dx * 16.0;
-                    clickV = (1.0 - dy) * 16.0;
-                }
-                case SOUTH -> { // +Z
-                    clickU = (1.0 - dx) * 16.0;
-                    clickV = (1.0 - dy) * 16.0;
-                }
-                case WEST -> { // -X
-                    clickU = (1.0 - dz) * 16.0;
-                    clickV = (1.0 - dy) * 16.0;
-                }
-                case EAST -> { // +X
-                    clickU = dz * 16.0;
-                    clickV = (1.0 - dy) * 16.0;
-                }
-                case UP -> { // +Y
-                    clickU = dx * 16.0;
-                    clickV = (1.0 - dz) * 16.0;
-                }
-                case DOWN -> { // -Y
-                    clickU = dx * 16.0;
-                    clickV = dz * 16.0;
-                }
+        int clickedSlot = -1;
+        for (int i = 0; i < UVS.length; i++) {
+            double du = clickU - UVS[i][0];
+            double dv = clickV - UVS[i][1];
+            double distSq = du * du + dv * dv;
+            if (distSq <= (PIXEL_THRESHOLD * PIXEL_THRESHOLD)) {
+                clickedSlot = i;
+                break;
             }
+        }
 
+        if (clickedSlot == -1) return InteractionResult.PASS;
 
-            final double[][] UVS = {{5.0, 11.0}, {11.0, 11.0}, {11.0, 5.0}};
-            final double PIXEL_THRESHOLD = 2.5;// pixels: how close the click must be (tweakable)
+        BlockEntity be = world.getBlockEntity(pos);
+        if (!(be instanceof NetworkFiltererBlockEntity netFC)) return InteractionResult.PASS;
 
-            // find clicked slot (if any)
-            int clickedSlot = -1;
-            for (int i = 0; i < UVS.length; i++) {
-                double du = clickU - UVS[i][0];
-                double dv = clickV - UVS[i][1];
-                double distSq = du * du + dv * dv;
-                if (distSq <= (PIXEL_THRESHOLD * PIXEL_THRESHOLD)) {
-                    clickedSlot = i;
-                    break;
-                }
-            }
+        IItemHandler inv = netFC.getItemHandler();
+        if (inv == null) return InteractionResult.PASS;
 
-            if (clickedSlot == -1) {
+        ItemStack extracted = inv.extractItem(clickedSlot, 1, false);
+        if (extracted == null || extracted.isEmpty()) return InteractionResult.PASS;
 
-                return InteractionResult.PASS;
-            }
+        boolean added = player.addItem(extracted);
+        if (!added) {
+            player.drop(extracted, false);
+        }
 
+        world.playSound(null, pos, SoundEvents.ITEM_PICKUP, SoundSource.BLOCKS, 0.6f, 1.0f);
+        player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.filter_removed").withStyle(ChatFormatting.GOLD), true);
+        return InteractionResult.CONSUME;
+    }
 
-            BlockEntity be = world.getBlockEntity(pos);
-            if (!(be instanceof NetworkFiltererBlockEntity netFC)) return InteractionResult.PASS;
+    @Override
+    protected @NotNull ItemInteractionResult useItemOn(ItemStack held, BlockState state, Level world, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        if (held.is(ModItems.BINOCULARS.asItem())) {
+            return ItemInteractionResult.SUCCESS;
+        }
 
-            IItemHandler inv = netFC.getItemHandler();
-            if (inv == null) return InteractionResult.PASS;
+        if (world.isClientSide) {
+            return ItemInteractionResult.SUCCESS;
+        }
 
-            // extract one item
-            ItemStack extracted = inv.extractItem(clickedSlot, 1, false);
+        BlockEntity be = world.getBlockEntity(pos);
+        if (!(be instanceof NetworkFiltererBlockEntity netFC)) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
 
-            // if nothing was extracted, do nothing (no sound/no message)
-            if (extracted == null || extracted.isEmpty()) {
-                return InteractionResult.PASS;
-            }
+        Item radarItem = ModItems.RADAR_FILTER_ITEM.get();
+        Item identItem = ModItems.IDENT_FILTER_ITEM.get();
+        Item targetItem = ModItems.TARGET_FILTER_ITEM.get();
 
-            // try give to player inventory, else drop it
-            boolean added = player.addItem(extracted);
-            if (!added) {
-                player.drop(extracted, false);
-            }
+        int targetSlot;
+        Item heldItem = held.getItem();
+        if (heldItem == radarItem) {
+            targetSlot = 0;
+            player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.success").withStyle(ChatFormatting.GREEN), true);
+        } else if (heldItem == identItem) {
+            targetSlot = 1;
+            player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.success").withStyle(ChatFormatting.GREEN), true);
+        } else if (heldItem == targetItem) {
+            targetSlot = 2;
+            player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.success").withStyle(ChatFormatting.GREEN), true);
+        } else {
+            player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.invalid").withStyle(ChatFormatting.RED), true);
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
 
+        IItemHandler inv = netFC.getItemHandler();
+        if (inv == null) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+
+        ItemStack toInsert = held.copy();
+        toInsert.setCount(1);
+        ItemStack remainder = inv.insertItem(targetSlot, toInsert, false);
+
+        if (remainder.isEmpty()) {
+            held.shrink(1);
+            if (held.getCount() <= 0) player.setItemInHand(hand, ItemStack.EMPTY);
             world.playSound(null, pos, SoundEvents.ITEM_PICKUP, SoundSource.BLOCKS, 0.6f, 1.0f);
-            player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.filter_removed").withStyle(ChatFormatting.GOLD), true);
-            return InteractionResult.CONSUME;
+            return ItemInteractionResult.CONSUME;
         }
-            // --- NON-EMPTY HAND: keep existing insertion logic (unchanged)
-            if (world.isClientSide) {
-                return InteractionResult.SUCCESS;
-            }
-
-            BlockEntity be = world.getBlockEntity(pos);
-            if (!(be instanceof NetworkFiltererBlockEntity)) return InteractionResult.PASS;
-            NetworkFiltererBlockEntity netFC = (NetworkFiltererBlockEntity) be;
-
-            // Allowed items mapping
-            Item radarItem = ModItems.RADAR_FILTER_ITEM.get();
-            Item identItem = ModItems.IDENT_FILTER_ITEM.get();
-            Item targetItem = ModItems.TARGET_FILTER_ITEM.get();
-
-            int targetSlot;
-            Item heldItem = held.getItem();
-            if (heldItem == radarItem) {
-                targetSlot = 0;
-                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.success").withStyle(ChatFormatting.GREEN),true);
-            } else if (heldItem == identItem) {
-                targetSlot = 1;
-                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.success").withStyle(ChatFormatting.GREEN),true);
-            } else if (heldItem == targetItem) {
-                targetSlot = 2;
-                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.success").withStyle(ChatFormatting.GREEN),true);
-            } else {
-                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.invalid").withStyle(ChatFormatting.RED),true);
-                return InteractionResult.PASS;
-            }
-
-            IItemHandler inv = netFC.getItemHandler();
-
-            if (inv == null) return InteractionResult.PASS;
-
-
-            ItemStack toInsert = held.copy();
-            toInsert.setCount(1);
-            ItemStack remainder = inv.insertItem(targetSlot, toInsert, false);
-
-            if (remainder.isEmpty()) {
-                held.shrink(1);
-                if (held.getCount() <= 0) player.setItemInHand(hand, ItemStack.EMPTY);
-                world.playSound(null, pos, SoundEvents.ITEM_PICKUP, SoundSource.BLOCKS, 0.6f, 1.0f);
-
-                return InteractionResult.CONSUME;
-            } else {
-                return InteractionResult.PASS;
-            }
+        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
     }
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {

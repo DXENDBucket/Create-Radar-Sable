@@ -6,8 +6,10 @@ import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.datalink.DataLinkBlock;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import com.happysg.radar.registry.ModBlocks;
+import com.happysg.radar.utils.NbtCompat;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -21,13 +23,16 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.Nullable;
-import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.function.Predicate;
 
 public class NetworkData extends SavedData {
+    private static final SavedData.Factory<NetworkData> FACTORY = new SavedData.Factory<>(
+            NetworkData::new,
+            NetworkData::load
+    );
 
     public enum RadarKind { BEARING, STATIONARY }
     public enum Mountkind { NORMAL, FIXED, COMPACT}
@@ -91,8 +96,7 @@ public class NetworkData extends SavedData {
 
     public static NetworkData get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(
-                NetworkData::load,
-                NetworkData::new,
+                FACTORY,
                 "network_data"
         );
     }
@@ -204,7 +208,7 @@ public static BlockPos getFiltererPosFromGroupKey(@Nullable String filtererKey) 
     // Save / Load
     // ------------------------------------------------------------
 
-    public static NetworkData load(CompoundTag root) {
+    public static NetworkData load(CompoundTag root, HolderLookup.Provider provider) {
         NetworkData data = new NetworkData();
 
         // Groups
@@ -212,8 +216,8 @@ public static BlockPos getFiltererPosFromGroupKey(@Nullable String filtererKey) 
         for (int i = 0; i < groupsTag.size(); i++) {
             CompoundTag g = groupsTag.getCompound(i);
 
-            ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(g.getString("Dim")));
-            BlockPos filtererPos = NbtUtils.readBlockPos(g.getCompound("FiltererPos"));
+            ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(g.getString("Dim")));
+            BlockPos filtererPos = NbtCompat.readBlockPosOrDefault(g, "FiltererPos", BlockPos.ZERO);
             String groupKey = key(dim, filtererPos);
 
             Group group = new Group(new FilterKey(dim, filtererPos));
@@ -225,46 +229,54 @@ public static BlockPos getFiltererPosFromGroupKey(@Nullable String filtererKey) 
 
 
             if (g.contains("MonitorEndpoints", Tag.TAG_LIST)) {
-                ListTag list = g.getList("MonitorEndpoints", Tag.TAG_COMPOUND);
+                ListTag list = NbtCompat.getBlockPosList(g, "MonitorEndpoints");
                 for (int mi = 0; mi < list.size(); mi++) {
-                    BlockPos p = NbtUtils.readBlockPos(list.getCompound(mi));
+                    BlockPos p = NbtCompat.readBlockPosListEntry(list, mi);
+                    if (p == null) continue;
                     group.monitorEndpoints.add(p);
                     data.endpointToFilterer.put(key(dim, p), groupKey);
                 }
             }
 // LEGACY single-monitor worlds
-            else if (g.contains("MonitorPos", Tag.TAG_COMPOUND)) {
-                BlockPos p = NbtUtils.readBlockPos(g.getCompound("MonitorPos"));
-                group.monitorEndpoints.add(p);
-                data.endpointToFilterer.put(key(dim, p), groupKey);
+            else if (g.contains("MonitorPos")) {
+                BlockPos p = NbtCompat.readBlockPos(g, "MonitorPos");
+                if (p != null) {
+                    group.monitorEndpoints.add(p);
+                    data.endpointToFilterer.put(key(dim, p), groupKey);
+                }
             }
 
-            if (g.contains("RadarPos", Tag.TAG_COMPOUND)) {
-                group.radarPos = NbtUtils.readBlockPos(g.getCompound("RadarPos"));
-                group.radarKind = RadarKind.valueOf(g.getString("RadarKind"));
-                data.endpointToFilterer.put(key(dim, group.radarPos), groupKey);
+            if (g.contains("RadarPos")) {
+                group.radarPos = NbtCompat.readBlockPos(g, "RadarPos");
+                if (group.radarPos != null) {
+                    group.radarKind = RadarKind.valueOf(g.getString("RadarKind"));
+                    data.endpointToFilterer.put(key(dim, group.radarPos), groupKey);
+                }
             }
 
             // weapon endpoints
-            ListTag weapons = g.getList("WeaponEndpoints", Tag.TAG_COMPOUND);
+            ListTag weapons = NbtCompat.getBlockPosList(g, "WeaponEndpoints");
             for (int w = 0; w < weapons.size(); w++) {
-                BlockPos ep = NbtUtils.readBlockPos(weapons.getCompound(w));
+                BlockPos ep = NbtCompat.readBlockPosListEntry(weapons, w);
+                if (ep == null) continue;
                 group.weaponEndpoints.add(ep);
                 data.endpointToFilterer.put(key(dim, ep), groupKey);
             }
 
             // used mounts
-            ListTag usedMounts = g.getList("UsedWeaponMounts", Tag.TAG_COMPOUND);
+            ListTag usedMounts = NbtCompat.getBlockPosList(g, "UsedWeaponMounts");
             for (int m = 0; m < usedMounts.size(); m++) {
-                BlockPos mp = NbtUtils.readBlockPos(usedMounts.getCompound(m));
+                BlockPos mp = NbtCompat.readBlockPosListEntry(usedMounts, m);
+                if (mp == null) continue;
                 group.usedWeaponMounts.add(mp);
                 data.weaponMountToFilterer.put(key(dim, mp), groupKey);
             }
 
             // datalinks
-            ListTag links = g.getList("DataLinks", Tag.TAG_COMPOUND);
+            ListTag links = NbtCompat.getBlockPosList(g, "DataLinks");
             for (int d = 0; d < links.size(); d++) {
-                BlockPos lp = NbtUtils.readBlockPos(links.getCompound(d));
+                BlockPos lp = NbtCompat.readBlockPosListEntry(links, d);
+                if (lp == null) continue;
                 group.dataLinks.add(lp);
                 data.dataLinkToFilterer.put(key(dim, lp), groupKey);
             }
@@ -298,7 +310,7 @@ public static BlockPos getFiltererPosFromGroupKey(@Nullable String filtererKey) 
     }
 
     @Override
-    public CompoundTag save(CompoundTag root) {
+    public CompoundTag save(CompoundTag root, HolderLookup.Provider provider) {
         ListTag groupsTag = new ListTag();
 
         for (Group group : groupsByFilterer.values()) {

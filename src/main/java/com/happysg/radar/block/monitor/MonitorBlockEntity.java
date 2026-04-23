@@ -9,11 +9,13 @@ import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.RadarTrackUtil;
 import com.happysg.radar.block.behavior.networks.config.AutoTargetingHelper;
+import com.happysg.radar.utils.NbtCompat;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.api.equipment.goggles.IHaveHoveringInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
@@ -462,18 +464,18 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     // NBT sync
 
     @Override
-    protected void read(CompoundTag tag, boolean clientPacket) {
-        super.read(tag, clientPacket);
+    protected void read(CompoundTag tag, HolderLookup.Provider provider, boolean clientPacket) {
+        super.read(tag, provider, clientPacket);
 
-        if (tag.contains("Controller", Tag.TAG_COMPOUND))
-            controller = NbtUtils.readBlockPos(tag.getCompound("Controller"));
+        if (tag.contains("Controller"))
+            controller = NbtCompat.readBlockPos(tag, "Controller");
 
         // if the packet explicitly says "no radar", i clear the cached radarPos
         if (clientPacket && tag.contains("HasRadarPos", Tag.TAG_BYTE) && !tag.getBoolean("HasRadarPos")) {
             radarPos = null;
             radar = null;
-        } else if (tag.contains("radarPos", Tag.TAG_COMPOUND)) {
-            radarPos = NbtUtils.readBlockPos(tag.getCompound("radarPos"));
+        } else if (tag.contains("radarPos")) {
+            radarPos = NbtCompat.readBlockPos(tag, "radarPos");
         }
 
         selectedEntity = tag.contains("SelectedEntity", Tag.TAG_STRING) ? tag.getString("SelectedEntity") : null;
@@ -512,8 +514,8 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     }
 
     @Override
-    protected void write(CompoundTag tag, boolean clientPacket) {
-        super.write(tag, clientPacket);
+    protected void write(CompoundTag tag, HolderLookup.Provider provider, boolean clientPacket) {
+        super.write(tag, provider, clientPacket);
 
         if (controller != null)
             tag.put("Controller", NbtUtils.writeBlockPos(controller));

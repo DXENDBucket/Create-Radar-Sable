@@ -1,6 +1,7 @@
 package com.happysg.radar.networking.networkhandlers;
 
 import com.happysg.radar.block.behavior.networks.config.IdentificationConfig;
+import com.happysg.radar.utils.ItemNbt;
 import net.minecraft.nbt.*;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -22,7 +23,7 @@ public class ListNBTHandler {
         ItemStack stack = player.getMainHandItem();
         if (stack.isEmpty()) return;
 
-        CompoundTag root = stack.getOrCreateTag();
+        CompoundTag root = ItemNbt.getOrCreateTag(stack);
         CompoundTag filters = root.contains(FILTERS_ROOT, Tag.TAG_COMPOUND)
                 ? root.getCompound(FILTERS_ROOT)
                 : new CompoundTag();
@@ -41,7 +42,7 @@ public class ListNBTHandler {
         root.remove(SINGLE_KEY);
         root.remove("FriendOrFoeList");
 
-        stack.setTag(root);
+        ItemNbt.setTag(stack, root);
         player.getInventory().setChanged();
         player.containerMenu.broadcastChanges();
     }
@@ -50,7 +51,7 @@ public class ListNBTHandler {
         ItemStack stack = player.getMainHandItem();
         if (stack.isEmpty()) return;
 
-        CompoundTag root = stack.getOrCreateTag();
+        CompoundTag root = ItemNbt.getOrCreateTag(stack);
         CompoundTag filters = root.contains(FILTERS_ROOT, Tag.TAG_COMPOUND)
                 ? root.getCompound(FILTERS_ROOT)
                 : new CompoundTag();
@@ -68,7 +69,7 @@ public class ListNBTHandler {
         root.remove(SINGLE_KEY);
         root.remove("FriendOrFoeList");
 
-        stack.setTag(root);
+        ItemNbt.setTag(stack, root);
         player.getInventory().setChanged();
         player.containerMenu.broadcastChanges();
     }
@@ -76,9 +77,9 @@ public class ListNBTHandler {
     public static LoadedLists loadFromHeldItem(Player player) {
         ItemStack stack = player.getMainHandItem();
         LoadedLists loaded = new LoadedLists();
-        if (stack.isEmpty() || !stack.hasTag()) return loaded;
+        if (stack.isEmpty() || !ItemNbt.hasTag(stack)) return loaded;
 
-        CompoundTag root = stack.getTag();
+        CompoundTag root = ItemNbt.getTag(stack);
         if (root == null) return loaded;
 
         // New format first
@@ -100,9 +101,9 @@ public class ListNBTHandler {
 
     public static String loadStringFromHeldItem(Player player) {
         ItemStack stack = player.getMainHandItem();
-        if (stack.isEmpty() || !stack.hasTag()) return "";
+        if (stack.isEmpty() || !ItemNbt.hasTag(stack)) return "";
 
-        CompoundTag root = stack.getTag();
+        CompoundTag root = ItemNbt.getTag(stack);
         if (root == null) return "";
 
         // New format first

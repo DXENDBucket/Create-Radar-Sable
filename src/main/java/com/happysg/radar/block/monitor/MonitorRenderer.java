@@ -169,8 +169,8 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
     private void renderLine(VertexConsumer buffer, Matrix4f matrix, Matrix3f normal,
                             float x1, float y1, float z1, float x2, float y2, float z2,
                             float r, float g, float b, float alpha) {
-        buffer.vertex(matrix, x1, y1, z1).color(r, g, b, alpha).normal(normal, 0, 1, 0).endVertex();
-        buffer.vertex(matrix, x2, y2, z2).color(r, g, b, alpha).normal(normal, 0, 1, 0).endVertex();
+        buffer.addVertex(matrix, x1, y1, z1).setColor(r, g, b, alpha).setNormal(0, 1, 0);
+        buffer.addVertex(matrix, x2, y2, z2).setColor(r, g, b, alpha).setNormal(0, 1, 0);
     }
 
     /**
@@ -197,37 +197,33 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         float u2 = 0.5f * gridSpacing, v2 = 0.5f * gridSpacing;
         float u3 = -0.5f * gridSpacing, v3 = 0.5f * gridSpacing;
 
-        buffer.vertex(m, xmin, DEPTH_GRID, zmin)
-                .color(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_GRID)
-                .uv(u0, v0)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, xmin, DEPTH_GRID, zmin)
+                .setColor(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_GRID)
+                .setUv(u0, v0)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
 
-        buffer.vertex(m, xmax, DEPTH_GRID, zmin)
-                .color(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_GRID)
-                .uv(u1, v1)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, xmax, DEPTH_GRID, zmin)
+                .setColor(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_GRID)
+                .setUv(u1, v1)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
 
-        buffer.vertex(m, xmax, DEPTH_GRID, zmax)
-                .color(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_GRID)
-                .uv(u2, v2)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, xmax, DEPTH_GRID, zmax)
+                .setColor(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_GRID)
+                .setUv(u2, v2)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
 
-        buffer.vertex(m, xmin, DEPTH_GRID, zmax)
-                .color(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_GRID)
-                .uv(u3, v3)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, xmin, DEPTH_GRID, zmax)
+                .setColor(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_GRID)
+                .setUv(u3, v3)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
     }
 
 
@@ -390,37 +386,33 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         float g = color.getGreenAsFloat();
         float b = color.getBlueAsFloat();
 
-        buffer.vertex(m, xmin, depth, zmin)
-                .color(r, g, b, alpha)
-                .uv(u0, v0)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, xmin, depth, zmin)
+                .setColor(r, g, b, alpha)
+                .setUv(u0, v0)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
 
-        buffer.vertex(m, xmax, depth, zmin)
-                .color(r, g, b, alpha)
-                .uv(u1, v1)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, xmax, depth, zmin)
+                .setColor(r, g, b, alpha)
+                .setUv(u1, v1)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
 
-        buffer.vertex(m, xmax, depth, zmax)
-                .color(r, g, b, alpha)
-                .uv(u2, v2)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, xmax, depth, zmax)
+                .setColor(r, g, b, alpha)
+                .setUv(u2, v2)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
 
-        buffer.vertex(m, xmin, depth, zmax)
-                .color(r, g, b, alpha)
-                .uv(u3, v3)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, xmin, depth, zmax)
+                .setColor(r, g, b, alpha)
+                .setUv(u3, v3)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
     }
 
     /**
@@ -502,37 +494,33 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         float v3 = centerY + (0 - centerX) * sin + (1 - centerY) * cos;
 
         // Render sweep quad
-        buffer.vertex(m, 1f - size, DEPTH_SWEEP, 1f - size)
-                .color(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_SWEEP)
-                .uv(u0, v0)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, 1f - size, DEPTH_SWEEP, 1f - size)
+                .setColor(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_SWEEP)
+                .setUv(u0, v0)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
 
-        buffer.vertex(m, 1, DEPTH_SWEEP, 1f - size)
-                .color(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_SWEEP)
-                .uv(u1, v1)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, 1, DEPTH_SWEEP, 1f - size)
+                .setColor(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_SWEEP)
+                .setUv(u1, v1)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
 
-        buffer.vertex(m, 1, DEPTH_SWEEP, 1f)
-                .color(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_SWEEP)
-                .uv(u2, v2)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, 1, DEPTH_SWEEP, 1f)
+                .setColor(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_SWEEP)
+                .setUv(u2, v2)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
 
-        buffer.vertex(m, 1f - size, DEPTH_SWEEP, 1f)
-                .color(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_SWEEP)
-                .uv(u3, v3)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(255)
-                .normal(n, 0, 1, 0)
-                .endVertex();
+        buffer.addVertex(m, 1f - size, DEPTH_SWEEP, 1f)
+                .setColor(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), ALPHA_SWEEP)
+                .setUv(u3, v3)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(255)
+                .setNormal(0, 1, 0);
     }
 
 

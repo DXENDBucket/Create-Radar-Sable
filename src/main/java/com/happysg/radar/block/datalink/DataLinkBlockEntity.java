@@ -1,10 +1,12 @@
 package com.happysg.radar.block.datalink;
 
 import com.happysg.radar.registry.AllDataBehaviors;
+import com.happysg.radar.utils.NbtCompat;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.resources.ResourceLocation;
@@ -77,14 +79,14 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
     }
 
     @Override
-    public void writeSafe(CompoundTag tag) {
-        super.writeSafe(tag);
+    public void writeSafe(CompoundTag tag, HolderLookup.Provider provider) {
+        super.writeSafe(tag, provider);
         writeGatheredData(tag);
     }
 
     @Override
-    protected void write(CompoundTag tag, boolean clientPacket) {
-        super.write(tag, clientPacket);
+    protected void write(CompoundTag tag, HolderLookup.Provider provider, boolean clientPacket) {
+        super.write(tag, provider, clientPacket);
         writeGatheredData(tag);
         if (clientPacket && activeTarget != null)
             tag.putString("TargetType", activeTarget.id.toString());
@@ -102,20 +104,20 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
     }
 
     @Override
-    protected void read(CompoundTag tag, boolean clientPacket) {
-        super.read(tag, clientPacket);
+    protected void read(CompoundTag tag, HolderLookup.Provider provider, boolean clientPacket) {
+        super.read(tag, provider, clientPacket);
 
-        targetOffset = NbtUtils.readBlockPos(tag.getCompound("TargetOffset"));
+        targetOffset = NbtCompat.readBlockPosOrDefault(tag, "TargetOffset", BlockPos.ZERO);
         ledState = tag.getBoolean("LedState");
 
         if (clientPacket && tag.contains("TargetType"))
-            activeTarget = AllDataBehaviors.getTarget(new ResourceLocation(tag.getString("TargetType")));
+            activeTarget = AllDataBehaviors.getTarget(ResourceLocation.parse(tag.getString("TargetType")));
 
         if (!tag.contains("Source"))
             return;
 
         CompoundTag data = tag.getCompound("Source");
-        activeSource = AllDataBehaviors.getSource(new ResourceLocation(data.getString("Id")));
+        activeSource = AllDataBehaviors.getSource(ResourceLocation.parse(data.getString("Id")));
         sourceConfig = new CompoundTag();
         if (activeSource != null)
             sourceConfig = data.copy();

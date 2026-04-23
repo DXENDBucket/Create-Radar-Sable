@@ -11,6 +11,7 @@ import com.simibubi.create.foundation.blockEntity.behaviour.BehaviourType;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.Animal;
@@ -250,8 +251,8 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     }
 
     @Override
-    public void read(CompoundTag nbt, boolean clientPacket) {
-        super.read(nbt, clientPacket);
+    public void read(CompoundTag nbt, HolderLookup.Provider provider, boolean clientPacket) {
+        super.read(nbt, provider, clientPacket);
         if (nbt.contains("fov")) fov = nbt.getInt("fov");
         if (nbt.contains("yRange")) yRange = nbt.getInt("yRange");
         if (nbt.contains("range")) range = nbt.getDouble("range");
@@ -262,8 +263,8 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     }
 
     @Override
-    public void write(CompoundTag nbt, boolean clientPacket) {
-        super.write(nbt, clientPacket);
+    public void write(CompoundTag nbt, HolderLookup.Provider provider, boolean clientPacket) {
+        super.write(nbt, provider, clientPacket);
         nbt.putInt("fov", fov);
         nbt.putInt("yRange", yRange);
         nbt.putDouble("range", range);

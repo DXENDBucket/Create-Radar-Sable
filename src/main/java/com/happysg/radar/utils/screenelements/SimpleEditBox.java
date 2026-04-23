@@ -1,6 +1,5 @@
 package com.happysg.radar.utils.screenelements;
 
-import net.minecraft.SharedConstants;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ComponentPath;
@@ -20,6 +19,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraft.util.StringUtil;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -155,7 +155,7 @@ public class SimpleEditBox extends AbstractWidget implements Renderable {
         int i = Math.min(this.cursorPos, this.highlightPos);
         int j = Math.max(this.cursorPos, this.highlightPos);
         int k = this.maxLength - this.value.length() - (i - j);
-        String s = SharedConstants.filterText(pTextToWrite);
+        String s = StringUtil.filterText(pTextToWrite);
         int l = s.length();
         if (k < l) {
             s = s.substring(0, k);
@@ -411,7 +411,7 @@ public class SimpleEditBox extends AbstractWidget implements Renderable {
     public boolean charTyped(char pCodePoint, int pModifiers) {
         if (!this.canConsumeInput()) {
             return false;
-        } else if (SharedConstants.isAllowedChatCharacter(pCodePoint)) {
+        } else if (StringUtil.isAllowedChatCharacter(pCodePoint)) {
             if (this.isEditable) {
                 this.insertText(Character.toString(pCodePoint));
             }

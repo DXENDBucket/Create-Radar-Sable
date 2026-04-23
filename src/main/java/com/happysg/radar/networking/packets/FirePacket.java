@@ -3,6 +3,8 @@ package com.happysg.radar.networking.packets;
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity;
 import com.happysg.radar.item.binos.Binoculars;
+import com.happysg.radar.utils.ItemNbt;
+import com.happysg.radar.utils.NbtCompat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
@@ -91,10 +93,10 @@ public class FirePacket implements CustomPacketPayload {
 
     @Nullable
     private static BlockPos getFiltererPos(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
+        CompoundTag tag = ItemNbt.getTag(stack);
         if (tag == null) return null;
         if (!tag.contains(TAG_FILTERER_POS)) return null;
 
-        return NbtUtils.readBlockPos(tag.getCompound(TAG_FILTERER_POS));
+        return NbtCompat.readBlockPos(tag, TAG_FILTERER_POS);
     }
 }

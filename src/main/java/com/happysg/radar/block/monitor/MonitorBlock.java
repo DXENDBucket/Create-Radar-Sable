@@ -5,6 +5,7 @@ import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.ModBlockEntityTypes;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.foundation.block.IBE;
+import com.mojang.serialization.MapCodec;
 import net.createmod.catnip.lang.Lang;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -29,6 +30,8 @@ import org.jetbrains.annotations.NotNull;
 
 
 public class MonitorBlock extends HorizontalDirectionalBlock implements IBE<MonitorBlockEntity> {
+    public static final MapCodec<MonitorBlock> CODEC = simpleCodec(MonitorBlock::new);
+
     public MonitorBlock(Properties pProperties) {
         super(pProperties);
         this.registerDefaultState(this.defaultBlockState()
@@ -37,6 +40,11 @@ public class MonitorBlock extends HorizontalDirectionalBlock implements IBE<Moni
     }
 
     public static final EnumProperty<Shape> SHAPE = EnumProperty.create("shape", Shape.class);
+
+    @Override
+    protected MapCodec<? extends HorizontalDirectionalBlock> codec() {
+        return CODEC;
+    }
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
@@ -68,9 +76,7 @@ public class MonitorBlock extends HorizontalDirectionalBlock implements IBE<Moni
     }
 
     @Override
-    public @NotNull InteractionResult use(@NotNull BlockState pState, @NotNull Level pLevel, @NotNull BlockPos pPos, Player pPlayer, @NotNull InteractionHand pHand, @NotNull BlockHitResult pHit) {
-        if (!pPlayer.getMainHandItem().isEmpty() || pHand == InteractionHand.OFF_HAND)
-            return InteractionResult.PASS;
+    protected @NotNull InteractionResult useWithoutItem(@NotNull BlockState pState, @NotNull Level pLevel, @NotNull BlockPos pPos, Player pPlayer, @NotNull BlockHitResult pHit) {
         if(RadarConfig.client().useGuiByDefault.get()){
             BlockEntity be = pLevel.getBlockEntity(pPos);
             if (be instanceof MonitorBlockEntity monitor) {
@@ -92,7 +98,7 @@ public class MonitorBlock extends HorizontalDirectionalBlock implements IBE<Moni
                 return InteractionResult.sidedSuccess(pLevel.isClientSide);
             }
         }
-        return onBlockEntityUse(pLevel, pPos, monitorBlockEntity -> MonitorInputHandler.onUse(monitorBlockEntity.getController(), pPlayer, pHand, pHit, pState.getValue(FACING)));
+        return onBlockEntityUse(pLevel, pPos, monitorBlockEntity -> MonitorInputHandler.onUse(monitorBlockEntity.getController(), pPlayer, InteractionHand.MAIN_HAND, pHit, pState.getValue(FACING)));
     }
 
     public enum Shape implements StringRepresentable {

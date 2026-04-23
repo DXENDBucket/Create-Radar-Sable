@@ -130,7 +130,7 @@ public class CannonUtil {
 
         for (BlockEntity be : cannon.presentBlockEntities.values()) {
             if (be instanceof AutocannonBreechBlockEntity b) {
-                ItemStack round = b.createItemHandler().getStackInSlot(0);
+                ItemStack round = readStackFromItemHandler(b, 0);
                 return fromCBCAmmo.apply(round);
             }
         }
@@ -138,7 +138,7 @@ public class CannonUtil {
         if (Mods.CBCMODERNWARFARE.isLoaded()) {
             for (BlockEntity be : cannon.presentBlockEntities.values()) {
                 if (be instanceof RotarycannonBreechBlockEntity rb) {
-                    ItemStack round = rb.createItemHandler().getStackInSlot(0);
+                    ItemStack round = readStackFromItemHandler(rb, 0);
                     return fromCBCAmmo.apply(round);
                 }
             }
@@ -153,6 +153,16 @@ public class CannonUtil {
         }
 
         return AC_FALLBACK;
+    }
+
+    private static ItemStack readStackFromItemHandler(Object owner, int slot) {
+        try {
+            Object handler = owner.getClass().getMethod("createItemHandler").invoke(owner);
+            Object stack = handler.getClass().getMethod("getStackInSlot", int.class).invoke(handler, slot);
+            return stack instanceof ItemStack itemStack ? itemStack : ItemStack.EMPTY;
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            return ItemStack.EMPTY;
+        }
     }
 
     public static BallisticPropertiesComponent getBallistics(AbstractMountedCannonContraption cannon, ServerLevel level) {

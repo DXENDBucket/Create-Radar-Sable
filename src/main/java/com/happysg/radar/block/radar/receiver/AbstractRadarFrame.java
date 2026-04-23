@@ -12,6 +12,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
@@ -50,20 +51,18 @@ public class AbstractRadarFrame extends WrenchableDirectionalBlock {
     @SuppressWarnings("deprecation")
     @Override
     @ParametersAreNonnullByDefault
-    public @NotNull InteractionResult use(BlockState pState, Level pLevel, BlockPos pPos, Player pPlayer, InteractionHand pHand, BlockHitResult pHit) {
-        ItemStack heldItem = pPlayer.getItemInHand(pHand);
-
+    protected @NotNull ItemInteractionResult useItemOn(ItemStack heldItem, BlockState pState, Level pLevel, BlockPos pPos, Player pPlayer, InteractionHand pHand, BlockHitResult pHit) {
         IPlacementHelper placementHelper = PlacementHelpers.get(placementHelperId);
 
         if (!pPlayer.isShiftKeyDown() && pPlayer.mayBuild()) {
             if (placementHelper.matchesItem(heldItem)) {
                 placementHelper.getOffset(pPlayer, pLevel, pState, pPos, pHit)
                         .placeInWorld(pLevel, (BlockItem) heldItem.getItem(), pPlayer, pHand, pHit);
-                return InteractionResult.SUCCESS;
+                return ItemInteractionResult.SUCCESS;
             }
         }
 
-        return InteractionResult.PASS;
+        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
     }
 
     @MethodsReturnNonnullByDefault

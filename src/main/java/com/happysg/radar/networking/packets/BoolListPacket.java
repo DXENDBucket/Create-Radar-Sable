@@ -1,6 +1,7 @@
 package com.happysg.radar.networking.packets;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.utils.ItemNbt;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -62,7 +63,7 @@ public class BoolListPacket implements CustomPacketPayload {
                 if ("detectBools".equals(pkt.key)) {
                     if (pkt.flags.length != DETECTION_FLAG_COUNT) return;
 
-                    CompoundTag root = stack.getOrCreateTag();
+                    CompoundTag root = ItemNbt.getOrCreateTag(stack);
 
                     CompoundTag filters = root.contains("Filters", Tag.TAG_COMPOUND) ? root.getCompound("Filters") : new CompoundTag();
 
@@ -81,11 +82,11 @@ public class BoolListPacket implements CustomPacketPayload {
                     filters.put("detection", det);
                     root.put("Filters", filters);
 
-                    stack.setTag(root);
+                    ItemNbt.setTag(stack, root);
                 } else if ("TargetBools".equals(pkt.key)) {
                     if (pkt.flags.length != TARGET_FLAG_COUNT) return;
 
-                    CompoundTag root = stack.getOrCreateTag();
+                    CompoundTag root = ItemNbt.getOrCreateTag(stack);
                     CompoundTag filters = root.contains("Filters", Tag.TAG_COMPOUND) ? root.getCompound("Filters") : new CompoundTag();
 
                     CompoundTag tgt = new CompoundTag();
@@ -103,7 +104,7 @@ public class BoolListPacket implements CustomPacketPayload {
 
                     filters.put("targeting", tgt);
                     root.put("Filters", filters);
-                    stack.setTag(root);
+                    ItemNbt.setTag(stack, root);
                 }
 
                 player.setItemInHand(hand, stack);

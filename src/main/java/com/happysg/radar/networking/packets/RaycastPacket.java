@@ -5,6 +5,7 @@ import com.happysg.radar.CreateRadar;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.item.binos.Binoculars;
+import com.happysg.radar.utils.ItemNbt;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -115,7 +116,7 @@ public class RaycastPacket implements CustomPacketPayload {
     }
 
     private static void storeLastHit(net.minecraft.world.item.ItemStack stack, ResourceKey<Level> dim, BlockPos pos) {
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = ItemNbt.getOrCreateTag(stack);
 
         CompoundTag hit = new CompoundTag();
         hit.putInt("x", pos.getX());
@@ -124,11 +125,13 @@ public class RaycastPacket implements CustomPacketPayload {
         hit.putString("dim", dim.location().toString());
 
         tag.put("LastHitPos", hit);
+        ItemNbt.setTag(stack, tag);
     }
 
     private static void clearLastHit(net.minecraft.world.item.ItemStack stack) {
-        CompoundTag tag = stack.getTag();
+        CompoundTag tag = ItemNbt.getTag(stack);
         if (tag == null) return;
         tag.remove("LastHitPos");
+        ItemNbt.setTag(stack, tag);
     }
 }

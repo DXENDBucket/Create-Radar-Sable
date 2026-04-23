@@ -12,6 +12,7 @@ import com.happysg.radar.block.radar.behavior.RadarScanningBlockBehavior;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.item.binos.Binoculars;
 import com.happysg.radar.block.radar.behavior.IRadar;
+import com.happysg.radar.utils.ItemNbt;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import com.mojang.logging.LogUtils;
@@ -19,6 +20,7 @@ import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -371,10 +373,10 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         if (slot < 0 || slot >= inventory.getSlots()) return;
 
         ItemStack s = inventory.getStackInSlot(slot);
-        if (s == null || s.isEmpty() || !s.hasTag()) {
+        if (s == null || s.isEmpty() || !ItemNbt.hasTag(s)) {
             slotNbt[slot] = null;
         } else {
-            CompoundTag tag = s.getTag();
+            CompoundTag tag = ItemNbt.getTag(s);
             slotNbt[slot] = tag == null ? null : tag.copy();
         }
     }
@@ -557,9 +559,9 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag nbt) {
-        super.saveAdditional(nbt);
-        nbt.put(NBT_INVENTORY, inventory.serializeNBT());
+    protected void saveAdditional(CompoundTag nbt, HolderLookup.Provider provider) {
+        super.saveAdditional(nbt, provider);
+        nbt.put(NBT_INVENTORY, inventory.serializeNBT(provider));
         saveSlotNbt(nbt);
         nbt.putLong("LastKnownPos", lastKnownPos.asLong());
     }
@@ -577,13 +579,13 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void load(CompoundTag nbt) {
-        super.load(nbt);
+    protected void loadAdditional(CompoundTag nbt, HolderLookup.Provider provider) {
+        super.loadAdditional(nbt, provider);
 
         if (nbt.contains(NBT_INVENTORY, Tag.TAG_COMPOUND)) {
-            inventory.deserializeNBT(nbt.getCompound(NBT_INVENTORY));
+            inventory.deserializeNBT(provider, nbt.getCompound(NBT_INVENTORY));
         } else if (nbt.contains(LEGACY_INV, Tag.TAG_COMPOUND)) {
-            inventory.deserializeNBT(nbt.getCompound(LEGACY_INV));
+            inventory.deserializeNBT(provider, nbt.getCompound(LEGACY_INV));
         }
 
         if (nbt.contains(NBT_SLOT_NBT, Tag.TAG_LIST)) {
@@ -599,8 +601,8 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
     // Sync to client
     @Override
-    public CompoundTag getUpdateTag() {
-        return saveWithoutMetadata();
+    public CompoundTag getUpdateTag(HolderLookup.Provider provider) {
+        return saveWithoutMetadata(provider);
     }
 
     @Nullable
@@ -683,8 +685,8 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
 
     private static IdentificationConfig readIdentificationFromItem(ItemStack stack) {
-        if (stack == null || stack.isEmpty() || !stack.hasTag()) return IdentificationConfig.DEFAULT;
-        CompoundTag root = stack.getTag();
+        if (stack == null || stack.isEmpty() || !ItemNbt.hasTag(stack)) return IdentificationConfig.DEFAULT;
+        CompoundTag root = ItemNbt.getTag(stack);
         if (root == null) return IdentificationConfig.DEFAULT;
 
         if (root.contains("Filters", Tag.TAG_COMPOUND)) {
@@ -737,8 +739,8 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
     @Nullable
     private static CompoundTag extractConfigCompound(ItemStack stack, String key) {
-        if (stack == null || stack.isEmpty() || !stack.hasTag()) return null;
-        CompoundTag root = stack.getTag();
+        if (stack == null || stack.isEmpty() || !ItemNbt.hasTag(stack)) return null;
+        CompoundTag root = ItemNbt.getTag(stack);
         if (root == null) return null;
 
         if (root.contains("Filters", Tag.TAG_COMPOUND)) {

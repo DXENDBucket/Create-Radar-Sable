@@ -2,6 +2,8 @@ package com.happysg.radar.item.binos;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity;
+import com.happysg.radar.utils.ItemNbt;
+import com.happysg.radar.utils.NbtCompat;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -10,6 +12,7 @@ import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SpyglassItem;
 import net.minecraft.world.item.TooltipFlag;
@@ -35,13 +38,15 @@ public class Binoculars extends SpyglassItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack pStack, @Nullable Level pLevel, List<Component> pTooltipComponents, TooltipFlag pIsAdvanced) {
-        super.appendHoverText(pStack, pLevel, pTooltipComponents, pIsAdvanced);
+    public void appendHoverText(ItemStack pStack, Item.TooltipContext pContext, List<Component> pTooltipComponents, TooltipFlag pIsAdvanced) {
+        super.appendHoverText(pStack, pContext, pTooltipComponents, pIsAdvanced);
         if (net.minecraft.client.gui.screens.Screen.hasShiftDown()) {
             pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".binoculars.base_text"));
         }
-        if (pStack.getOrCreateTag().contains("filtererPos")) {
-            BlockPos monitorPos = NbtUtils.readBlockPos(pStack.getOrCreateTag().getCompound("filtererPos"));
+        CompoundTag tag = ItemNbt.getTag(pStack);
+        if (tag != null && tag.contains("filtererPos")) {
+            BlockPos monitorPos = NbtCompat.readBlockPos(tag, "filtererPos");
+            if (monitorPos == null) return;
             pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".binoculars.controller").append(": " + monitorPos.toShortString()));
         } else {
             pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".binoculars.no_controller"));
@@ -61,8 +66,10 @@ public class Binoculars extends SpyglassItem {
                     true
             );
 
-            pContext.getItemInHand().getOrCreateTag().put("filterPos", NbtUtils.writeBlockPos(blockEntity.getBlockPos()));
-            pContext.getItemInHand().getOrCreateTag().put("filtererPos", NbtUtils.writeBlockPos(blockEntity.getBlockPos()));
+            CompoundTag tag = ItemNbt.getOrCreateTag(pContext.getItemInHand());
+            tag.put("filterPos", NbtUtils.writeBlockPos(blockEntity.getBlockPos()));
+            tag.put("filtererPos", NbtUtils.writeBlockPos(blockEntity.getBlockPos()));
+            ItemNbt.setTag(pContext.getItemInHand(), tag);
 
             return InteractionResult.SUCCESS;
         }
@@ -70,42 +77,37 @@ public class Binoculars extends SpyglassItem {
     }
 
     public static void setLastHit(ItemStack stack, @Nullable BlockPos pos) {
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = ItemNbt.getOrCreateTag(stack);
 
         if (pos == null) {
             tag.remove(TAG_LAST_HIT);
+            ItemNbt.setTag(stack, tag);
             return;
         }
 
-        CompoundTag hit = new CompoundTag();
-        hit.putInt("x", pos.getX());
-        hit.putInt("y", pos.getY());
-        hit.putInt("z", pos.getZ());
-
-        tag.put(TAG_LAST_HIT, hit);
+        tag.put(TAG_LAST_HIT, NbtUtils.writeBlockPos(pos));
+        ItemNbt.setTag(stack, tag);
     }
 
     @Nullable
     public static BlockPos getLastHit(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
+        CompoundTag tag = ItemNbt.getTag(stack);
         if (tag == null || !tag.contains(TAG_LAST_HIT)) return null;
 
-        CompoundTag hit = tag.getCompound(TAG_LAST_HIT);
-        return new BlockPos(
-                hit.getInt("x"),
-                hit.getInt("y"),
-                hit.getInt("z")
-        );
+        return NbtCompat.readBlockPos(tag, TAG_LAST_HIT);
     }
 
     public static boolean hasLastHit(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
+        CompoundTag tag = ItemNbt.getTag(stack);
         return tag != null && tag.contains(TAG_LAST_HIT);
     }
 
     public static void clearLastHit(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
-        if (tag != null) tag.remove(TAG_LAST_HIT);
+        CompoundTag tag = ItemNbt.getTag(stack);
+        if (tag != null) {
+            tag.remove(TAG_LAST_HIT);
+            ItemNbt.setTag(stack, tag);
+        }
     }
 
 }

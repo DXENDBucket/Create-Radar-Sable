@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
 import org.joml.Vector3f;
 import org.slf4j.Logger;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
@@ -163,7 +164,7 @@ public class WeaponFiringControl {
                     start, end,
                     ClipContext.Block.COLLIDER,
                     ClipContext.Fluid.NONE,
-                    null
+                    CollisionContext.empty()
             );
 
             HitResult hit = level.clip(ctx);

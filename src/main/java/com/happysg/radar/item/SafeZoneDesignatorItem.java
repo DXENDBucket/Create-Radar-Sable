@@ -2,6 +2,8 @@ package com.happysg.radar.item;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
+import com.happysg.radar.utils.ItemNbt;
+import com.happysg.radar.utils.NbtCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -29,9 +31,10 @@ public class SafeZoneDesignatorItem extends Item {
     public void inventoryTick(ItemStack pStack, Level pLevel, Entity pEntity, int pSlotId, boolean pIsSelected) {
         super.inventoryTick(pStack, pLevel, pEntity, pSlotId, pIsSelected);
         if (pIsSelected) {
-            CompoundTag data = pStack.getOrCreateTag();
-            if (data.contains("monitorPos")) {
-                BlockPos monitorPos = NbtUtils.readBlockPos(data.getCompound("monitorPos"));
+            CompoundTag data = ItemNbt.getTag(pStack);
+            if (data != null && data.contains("monitorPos")) {
+                BlockPos monitorPos = NbtCompat.readBlockPos(data, "monitorPos");
+                if (monitorPos == null) return;
                 if (pLevel.getBlockEntity(monitorPos) instanceof MonitorBlockEntity monitorBlockEntity && pLevel.isClientSide) {
                     monitorBlockEntity.showSafeZone();
                 }
@@ -44,7 +47,7 @@ public class SafeZoneDesignatorItem extends Item {
         BlockPos pos = pContext.getClickedPos();
         Level level = pContext.getLevel();
         ItemStack stack = pContext.getItemInHand();
-        CompoundTag data = stack.getOrCreateTag();
+        CompoundTag data = ItemNbt.getOrCreateTag(stack);
         Player player = pContext.getPlayer();
 
         if (player == null) {
@@ -53,6 +56,7 @@ public class SafeZoneDesignatorItem extends Item {
         boolean isCrouching = player.isCrouching();
         if (level.getBlockEntity(pos) instanceof MonitorBlockEntity monitorBlockEntity) {
             data.put("monitorPos", NbtUtils.writeBlockPos(monitorBlockEntity.getControllerPos()));
+            ItemNbt.setTag(stack, data);
             displayMessage(player, CreateRadar.MODID + ".item.safe_zone_designator.set", ChatFormatting.GREEN);
             return InteractionResult.SUCCESS;
         }
@@ -61,7 +65,8 @@ public class SafeZoneDesignatorItem extends Item {
             displayMessage(player, CreateRadar.MODID + ".item.safe_zone_designator.no_monitor", ChatFormatting.RED);
             return InteractionResult.FAIL;
         }
-        BlockPos monitorPos = NbtUtils.readBlockPos(data.getCompound("monitorPos"));
+        BlockPos monitorPos = NbtCompat.readBlockPos(data, "monitorPos");
+        if (monitorPos == null) return InteractionResult.FAIL;
 
         if (!data.contains("startPos")) {
             if (level.getBlockEntity(monitorPos) instanceof MonitorBlockEntity monitorBlockEntity) {
@@ -75,11 +80,13 @@ public class SafeZoneDesignatorItem extends Item {
         } else {
             if (player.isCrouching()) {
                 data.remove("startPos");
+                ItemNbt.setTag(stack, data);
                 displayMessage(player, CreateRadar.MODID + ".item.safe_zone_designator.reset", ChatFormatting.RED);
                 return InteractionResult.SUCCESS;
             }
 
-            BlockPos startPos = NbtUtils.readBlockPos(data.getCompound("startPos"));
+            BlockPos startPos = NbtCompat.readBlockPos(data, "startPos");
+            if (startPos == null) return InteractionResult.FAIL;
 
             if (level.getBlockEntity(monitorPos) instanceof MonitorBlockEntity monitorBlockEntity) {
                 monitorBlockEntity.addSafeZone(startPos, pos);
@@ -91,6 +98,7 @@ public class SafeZoneDesignatorItem extends Item {
             }
         }
 
+        ItemNbt.setTag(stack, data);
         return InteractionResult.SUCCESS;
     }
 
@@ -99,10 +107,12 @@ public class SafeZoneDesignatorItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack pStack, Level pLevel, List<Component> pTooltipComponents, TooltipFlag pIsAdvanced) {
-        super.appendHoverText(pStack, pLevel, pTooltipComponents, pIsAdvanced);
-        if (pStack.getOrCreateTag().contains("monitorPos")) {
-            BlockPos monitorPos = NbtUtils.readBlockPos(pStack.getOrCreateTag().getCompound("monitorPos"));
+    public void appendHoverText(ItemStack pStack, Item.TooltipContext pContext, List<Component> pTooltipComponents, TooltipFlag pIsAdvanced) {
+        super.appendHoverText(pStack, pContext, pTooltipComponents, pIsAdvanced);
+        CompoundTag data = ItemNbt.getTag(pStack);
+        if (data != null && data.contains("monitorPos")) {
+            BlockPos monitorPos = NbtCompat.readBlockPos(data, "monitorPos");
+            if (monitorPos == null) return;
             pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".guided_fuze.linked_monitor", monitorPos));
         } else
             pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".guided_fuze.no_monitor"));
@@ -110,9 +120,9 @@ public class SafeZoneDesignatorItem extends Item {
 
     @Nullable
     public BlockPos getMonitorPos(ItemStack stack) {
-        CompoundTag data = stack.getOrCreateTag();
-        if (data.contains("monitorPos")) {
-            return NbtUtils.readBlockPos(data.getCompound("monitorPos"));
+        CompoundTag data = ItemNbt.getTag(stack);
+        if (data != null && data.contains("monitorPos")) {
+            return NbtCompat.readBlockPos(data, "monitorPos");
         }
         return null;
     }

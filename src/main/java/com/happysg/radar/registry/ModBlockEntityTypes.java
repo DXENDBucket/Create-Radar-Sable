@@ -15,7 +15,6 @@ import com.happysg.radar.block.mount.SmartMountBlockEntity;
 import com.happysg.radar.block.mount.SmartMountRenderer;
 import com.happysg.radar.block.mount.SmartMountVisual;
 import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
-import com.happysg.radar.block.radar.skyradar.SkyRadarBlock;
 import com.happysg.radar.block.radar.skyradar.SkyRadarBlockEntity;
 import com.simibubi.create.content.contraptions.bearing.BearingRenderer;
 import com.simibubi.create.content.contraptions.bearing.BearingVisual;

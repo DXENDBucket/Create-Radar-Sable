@@ -5,11 +5,14 @@ import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import com.happysg.radar.config.RadarConfig;
+import com.happysg.radar.utils.ItemNbt;
+import com.happysg.radar.utils.NbtCompat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
@@ -32,7 +35,9 @@ public class GuidedFuzeItem extends FuzeItem {
     public InteractionResult useOn(UseOnContext pContext) {
         BlockPos clickedPos = pContext.getClickedPos();
         if (pContext.getLevel().getBlockEntity(clickedPos) instanceof NetworkFiltererBlockEntity blockEntity) {
-            pContext.getItemInHand().getOrCreateTag().put("monitorPos", NbtUtils.writeBlockPos(blockEntity.getBlockPos()));
+            CompoundTag tag = ItemNbt.getOrCreateTag(pContext.getItemInHand());
+            tag.put("monitorPos", NbtUtils.writeBlockPos(blockEntity.getBlockPos()));
+            ItemNbt.setTag(pContext.getItemInHand(), tag);
             return InteractionResult.SUCCESS;
         }
         return super.useOn(pContext);
@@ -42,7 +47,7 @@ public class GuidedFuzeItem extends FuzeItem {
     public boolean onProjectileTick(ItemStack stack, AbstractCannonProjectile projectile) {
         boolean detonate = super.onProjectileTick(stack, projectile);
 
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = ItemNbt.getOrCreateTag(stack);
         if (!tag.contains("monitorPos"))
             return detonate;
 
@@ -52,7 +57,9 @@ public class GuidedFuzeItem extends FuzeItem {
         if (vel.y > 0 && !RadarConfig.server().guidedFuzeSeekBeforeApex.get())
             return detonate;
 
-        BlockPos monitorPos = NbtUtils.readBlockPos(tag.getCompound("monitorPos"));
+        BlockPos monitorPos = NbtCompat.readBlockPos(tag, "monitorPos");
+        if (monitorPos == null)
+            return detonate;
         if (!(projectile.level().getBlockEntity(monitorPos) instanceof NetworkFiltererBlockEntity monitor))
             return detonate;
 
@@ -78,6 +85,7 @@ public class GuidedFuzeItem extends FuzeItem {
 
         if (Math.abs(yawDelta) > RadarConfig.server().guidedFuzeMaxSeekDegrees.get()) {
             // i refuse to seek anything outside the initial +/- 30 degree cone
+            ItemNbt.setTag(stack, tag);
             return detonate;
         }
 
@@ -89,6 +97,7 @@ public class GuidedFuzeItem extends FuzeItem {
         if (Math.abs(projectile.position().y - target.y) > horizontalDistance / 2 || tag.getBoolean("valid")) {
             tag.putBoolean("valid", true);
         } else {
+            ItemNbt.setTag(stack, tag);
             return detonate;
         }
 
@@ -118,6 +127,7 @@ public class GuidedFuzeItem extends FuzeItem {
         }
 
         projectile.setDeltaMovement(newDir.scale(speed));
+        ItemNbt.setTag(stack, tag);
         return detonate;
     }
 
@@ -159,10 +169,12 @@ public class GuidedFuzeItem extends FuzeItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack pStack, @Nullable Level pLevel, List<Component> pTooltipComponents, TooltipFlag pIsAdvanced) {
-        super.appendHoverText(pStack, pLevel, pTooltipComponents, pIsAdvanced);
-        if (pStack.getOrCreateTag().contains("monitorPos")) {
-            BlockPos monitorPos = NbtUtils.readBlockPos(pStack.getOrCreateTag().getCompound("monitorPos"));
+    public void appendHoverText(ItemStack pStack, Item.TooltipContext pContext, List<Component> pTooltipComponents, TooltipFlag pIsAdvanced) {
+        super.appendHoverText(pStack, pContext, pTooltipComponents, pIsAdvanced);
+        CompoundTag tag = ItemNbt.getTag(pStack);
+        if (tag != null && tag.contains("monitorPos")) {
+            BlockPos monitorPos = NbtCompat.readBlockPos(tag, "monitorPos");
+            if (monitorPos == null) return;
             pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".guided_fuze.linked_monitor").append(monitorPos.toShortString()));
         } else
             pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".guided_fuze.no_monitor"));

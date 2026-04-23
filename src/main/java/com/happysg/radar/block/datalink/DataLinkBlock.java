@@ -60,7 +60,7 @@ public class DataLinkBlock extends WrenchableDirectionalBlock implements IBE<Dat
 
 
     @Override
-    public boolean isPathfindable(BlockState pState, BlockGetter pLevel, BlockPos pPos, PathComputationType pType) {
+    protected boolean isPathfindable(BlockState pState, PathComputationType pType) {
         return false;
     }
 

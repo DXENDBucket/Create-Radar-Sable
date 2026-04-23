@@ -9,6 +9,7 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -111,7 +112,7 @@ public final class AutoTargetingHelper {
                     start, to,
                     ClipContext.Block.COLLIDER,
                     ClipContext.Fluid.NONE,
-                    null
+                    CollisionContext.empty()
             );
 
             HitResult hit = level.clip(ctx);

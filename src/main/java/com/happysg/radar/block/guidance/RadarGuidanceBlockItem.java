@@ -5,16 +5,17 @@ import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlock
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import com.happysg.radar.compat.cbcmw.CBCMWCompatRegister;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.context.UseOnContext;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -37,14 +38,15 @@ public class RadarGuidanceBlockItem extends BlockItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack pStack, @Nullable Level pLevel, List<Component> pTooltip, TooltipFlag pFlag) {
-        CompoundTag tag = BlockItem.getBlockEntityData(pStack);
+    public void appendHoverText(ItemStack pStack, Item.TooltipContext pContext, List<Component> pTooltip, TooltipFlag pFlag) {
+        CustomData data = pStack.get(DataComponents.BLOCK_ENTITY_DATA);
+        CompoundTag tag = data == null ? null : data.copyTag();
         if (tag != null && tag.contains("filtererPos")) {
             BlockPos monitorPos = BlockPos.of(tag.getLong("filtererPos"));
             pTooltip.add(Component.translatable(CreateRadar.MODID + ".guided_fuze.linked_monitor", monitorPos));
         } else {
             pTooltip.add(Component.translatable(CreateRadar.MODID + ".guided_fuze.no_monitor"));
         }
-        super.appendHoverText(pStack, pLevel, pTooltip, pFlag);
+        super.appendHoverText(pStack, pContext, pTooltip, pFlag);
     }
 }

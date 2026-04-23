@@ -5,6 +5,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 
+import java.util.function.Consumer;
+
 public final class ItemNbt {
     private ItemNbt() {
     }
@@ -30,5 +32,11 @@ public final class ItemNbt {
         } else {
             stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag.copy()));
         }
+    }
+
+    public static void updateTag(ItemStack stack, Consumer<CompoundTag> updater) {
+        CompoundTag tag = getOrCreateTag(stack);
+        updater.accept(tag);
+        setTag(stack, tag);
     }
 }

@@ -98,11 +98,6 @@ public class CreateRadar {
         if (Mods.SHUPAPIUM.isLoaded())
             CBCWPFCompatRegister.registerCBCWPF();
     }
-    @SubscribeEvent
-    public static void commonSetup(FMLCommonSetupEvent event) {
-
-    }
-
     private static void clientTick(ClientTickEvent.Post event) {
         DataLinkBlockItem.clientTick();
     }

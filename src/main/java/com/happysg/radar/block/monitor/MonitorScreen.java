@@ -101,7 +101,7 @@ public class MonitorScreen extends Screen {
 
     @Override
     public void render(GuiGraphics gg, int mouseX, int mouseY, float partialTicks) {
-        renderBackground(gg);
+        renderBackground(gg, mouseX, mouseY, partialTicks);
         drawPanelBackground(gg);
 
         MonitorBlockEntity monitor = getController();

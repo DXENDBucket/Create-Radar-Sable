@@ -181,11 +181,11 @@ public class ModBlocks {
                         provider.getVariantBuilder(context.get())
                                 .partialState().with(FireControllerBlock.POWERED, false)
                                 .modelForState()
-                                .modelFile(provider.models().cubeAll("off",new ResourceLocation("create_radar","block/off")))
+                                .modelFile(provider.models().cubeAll("off", ResourceLocation.fromNamespaceAndPath("create_radar", "block/off")))
                                 .addModel()
                                 .partialState().with(FireControllerBlock.POWERED, true)
                                 .modelForState()
-                                .modelFile(provider.models().cubeAll("on",new ResourceLocation("create_radar","block/on")))
+                                .modelFile(provider.models().cubeAll("on", ResourceLocation.fromNamespaceAndPath("create_radar", "block/on")))
                                 .addModel();
                     })          .properties(p -> p.noOcclusion())
                     .properties(p -> p.strength(0.8f))
