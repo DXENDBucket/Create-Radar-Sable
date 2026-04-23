@@ -141,7 +141,7 @@ public class WeaponFiringControl {
         this.yawController = yawController;
         this.level = cannonMount.getLevel();
 
-        LOGGER.debug("FiringControlBlockEntity.<init>() → controller={} mountPos={}", controller, cannonMount.getBlockPos());
+        LOGGER.debug("FiringControlBlockEntity.<init>() 鈫?controller={} mountPos={}", controller, cannonMount.getBlockPos());
     }
     private RayResult rayClear(Vec3 start, Vec3 end) {
 
@@ -592,7 +592,7 @@ public class WeaponFiringControl {
     }
 
     public void setSafeZones(List<AABB> safeZones) {
-        LOGGER.debug("setSafeZones() → {} zones", safeZones.size());
+        LOGGER.debug("setSafeZones() 鈫?{} zones", safeZones.size());
         this.safeZones = safeZones;
     }
     public  Entity getEntityByUUID(ServerLevel level, UUID uuid) {
@@ -859,7 +859,7 @@ public class WeaponFiringControl {
     }
 
     public void setTarget(Vec3 target, TargetingConfig config, RadarTrack track, WeaponNetworkData.WeaponGroupView view){
-        LOGGER.warn("setTarget() → new target={} config={} atTick={}",
+        LOGGER.warn("setTarget() 鈫?new target={} config={} atTick={}",
                 target, config, level != null ? level.getGameTime() : -1L);
         if (target == null) {
             this.target = null;

@@ -703,7 +703,7 @@ public class Percentile extends AbstractUnivariateStatistic implements Serializa
      * <li>
      * <a href="https://www.amherst.edu/media/view/129116/.../Sample+Quantiles.pdf">
      * Hyndman, R. J. and Fan, Y. (1996) Sample quantiles in statistical
-     * packages, American Statistician 50, 361–365</a> </li>
+     * packages, American Statistician 50, 361鈥?65</a> </li>
      * <li>
      * <a href="http://stat.ethz.ch/R-manual/R-devel/library/stats/html/quantile.html">
      * R-Manual </a></li>

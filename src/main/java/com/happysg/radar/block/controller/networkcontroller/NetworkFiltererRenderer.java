@@ -11,12 +11,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
-
-import java.util.Optional;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.items.IItemHandler;
 
 @OnlyIn(Dist.CLIENT)
 public class NetworkFiltererRenderer implements BlockEntityRenderer<NetworkFiltererBlockEntity> {
@@ -56,35 +53,11 @@ public class NetworkFiltererRenderer implements BlockEntityRenderer<NetworkFilte
             } catch (Exception ignored) {}
         }
 
-        // Access stacks: prefer direct BE inventory accessor, else fall back to capability.
+        // Access stacks directly from the block entity inventory.
         ItemStack[] stacks = new ItemStack[3];
-        boolean usedCapability = false;
-
-        try {
-            // try direct accessor: getStackInSlot(int) or public inventory
-            for (int i = 0; i < 3; i++) {
-                IItemHandler inv =  be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
-                stacks[i] = inv.getStackInSlot(i);
-            }
-        } catch (NoSuchMethodError | AbstractMethodError e) {
-            // fallback to capability
-            usedCapability = true;
-        } catch (Throwable t) {
-            // If getStackInSlot doesn't exist, fall back below
-            usedCapability = true;
-        }
-
-        if (usedCapability) {
-            Optional<IItemHandler> cap = be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve();
-            if (cap.isPresent()) {
-                IItemHandler inv = cap.get();
-                for (int i = 0; i < 3; i++) {
-                    stacks[i] = inv.getStackInSlot(i);
-                }
-            } else {
-                // nothing to render
-                return;
-            }
+        IItemHandler inv = be.getItemHandler();
+        for (int i = 0; i < 3; i++) {
+            stacks[i] = inv.getStackInSlot(i);
         }
 
         // Render each non-empty slot

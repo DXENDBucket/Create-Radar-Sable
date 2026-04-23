@@ -1,10 +1,7 @@
 plugins {
     id 'idea'
     id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
-    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
-    id 'org.spongepowered.mixin' version '0.7.+'
-    id 'com.gradleup.shadow' version '8.3.5'
+    id 'net.neoforged.moddev' version '2.0.140'
 }
 
 String buildNumber = System.getenv("GITHUB_RUN_NUMBER")
@@ -15,189 +12,150 @@ base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
-minecraft {
-    mappings channel: mapping_channel, version: mapping_version
 
-    // This property allows configuring Gradle's ProcessResources task(s) to run on IDE output locations before launching the game.
-    // It is REQUIRED to be set to true for this template to function.
-    // See https://docs.gradle.org/current/dsl/org.gradle.language.jvm.tasks.ProcessResources.html
-    copyIdeResources = true
+neoForge {
+    version = neo_version
+
+    parchment {
+        minecraftVersion = parchment_minecraft_version
+        mappingsVersion = parchment_mappings_version
+    }
 
     runs {
-        // applies to all the run configs below
         configureEach {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            mods {
-                "${mod_id}" {
-                    source sourceSets.main
-                }
-            }
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            gameDirectory = project.file('run')
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            systemProperty 'forge.enabledGameTestNamespaces', mod_id
+            logLevel = org.slf4j.event.Level.DEBUG
         }
 
         client {
-            // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
-            property 'forge.enabledGameTestNamespaces', mod_id
+            client()
         }
 
         server {
-            property 'forge.enabledGameTestNamespaces', mod_id
+            server()
         }
+
         gameTestServer {
-            property 'forge.enabledGameTestNamespaces', mod_id
+            type = "gameTestServer"
         }
 
         data {
-            workingDirectory project.file('run-data')
-            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+            data()
+            gameDirectory = project.file('run-data')
+            programArguments.addAll '--mod', mod_id, '--all', '--output', file('src/generated/resources/').absolutePath, '--existing', file('src/main/resources/').absolutePath
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
         }
     }
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
-
 repositories {
-    gradlePluginPortal()
     mavenCentral()
     mavenLocal()
-    maven { url 'https://plugins.gradle.org/' }
-    maven { url 'https://maven.parchmentmc.org' }
-    maven { url 'https://maven.quiltmc.org/repository/release' }
-    maven { url 'https://maven.blamejared.com/' }
-
-    maven {
-        url = "https://api.modrinth.com/maven"
-    }
+    maven { url = 'https://maven.neoforged.net/releases' }
+    maven { url = 'https://maven.parchmentmc.org' }
+    maven { url = 'https://maven.quiltmc.org/repository/release' }
+    maven { url = 'https://maven.blamejared.com/' }
     maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
-
-    maven { url = "https://maven.createmod.net" } // Create, Ponder, Flywheel
-    maven { url = "https://maven.tterrag.com" } // Registrate
-    maven { url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/" } // ForgeConfigAPIPort
-
+    maven { url = 'https://maven.createmod.net' } // Create, Ponder, Flywheel
+    maven { url = 'https://maven.ithundxr.dev/snapshots' } // Registrate
+    maven { url = 'https://raw.githubusercontent.com/Fuzss/modresources/main/maven/' } // ForgeConfigAPIPort
     maven {
-        url 'https://api.modrinth.com/maven'
+        url = 'https://api.modrinth.com/maven'
         content { includeGroup 'maven.modrinth' }
     }
     maven {
-        url 'https://www.cursemaven.com'
-        content { includeGroup "curse.maven" }
-    }
-    maven { // Ritchie's Projectile Library && CBC
-        url = "https://maven.realrobotix.me/master/"
-        content {
-            includeGroup("com.rbasamoyai")
-        }
-    }
-    maven { url 'https://modmaven.dev/' }
-
-
-    maven {
-        url "https://cursemaven.com"
-        content {
-            includeGroup "curse.maven"
-        }
+        url = 'https://www.cursemaven.com'
+        content { includeGroup 'curse.maven' }
     }
     maven {
-        url "https://maven.squiddev.cc"
+        url = 'https://maven.realrobotix.me/master/'
         content {
-            includeGroup("cc.tweaked")
+            includeGroup 'com.rbasamoyai'
+        }
+    }
+    maven { url = 'https://modmaven.dev/' }
+    maven {
+        url = 'https://maven.squiddev.cc'
+        content {
+            includeGroup 'cc.tweaked'
         }
     }
     flatDir {
         dirs 'lib'
     }
-
 }
 
 dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    // Create
+    implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") {
+        transitive = false
+    }
+    implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
+    compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
+    runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
+    implementation("com.tterrag.registrate:Registrate:${registrate_version}")
+    compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${mixinextras_version}"))
+    implementation("io.github.llamalad7:mixinextras-neoforge:${mixinextras_version}")
 
+    // CBC
+    implementation("maven.modrinth:create-big-cannons:${cbc_version}") {
+        transitive = false
+    }
+    implementation("maven.modrinth:rpl:${rpl_version}") {
+        transitive = false
+    }
 
+    // CEC (Create Energy Cannons) - no public 1.21.1 NeoForge artifact is configured here yet.
+    compileOnly files("lib/createenergycannons-0.1+mc1.20.1.jar")
 
+    // Optional compat mods
+    // TODO: Replace with a 1.21.1 NeoForge artifact when CBC Modern Warfare publishes one.
+    compileOnly("maven.modrinth:cbcmodernwarfare:${cbc_mw_version}+mc.1.20.1-forge")
+    // TODO: Replace with a 1.21.1 NeoForge artifact when CBC Advanced Technologies publishes one.
+    compileOnly("maven.modrinth:create-big-cannons-advanced-technologies:${cbc_at_version}-1.20.1")
+    compileOnly("maven.modrinth:cbc-warium-projectiles:${cbc_wpf_version}")
 
-    //Create
-    implementation(fg.deobf("com.simibubi.create:create-${minecraft_version}:${create_version}:slim"))
-    implementation(fg.deobf("net.createmod.ponder:Ponder-Forge-${minecraft_version}:${ponder_version}"))
-    compileOnly(fg.deobf("dev.engine-room.flywheel:flywheel-forge-api-${minecraft_version}:${flywheel_version}"))
-    runtimeOnly(fg.deobf("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}"))
-    implementation(fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}"))
-    compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:0.4.1"))
-    implementation("io.github.llamalad7:mixinextras-forge:0.4.1")
-
-    //CBC
-    implementation fg.deobf("maven.modrinth:create-big-cannons:${cbc_version}") { transitive = false }
-    implementation fg.deobf("maven.modrinth:rpl:${rpl_version}") { transitive = false }
-
-    //CEC (Create Energy Cannons)
-    compileOnly fg.deobf(files("lib/createenergycannons-0.1+mc1.20.1.jar"))
-
-    //CBCMW
-    //replace implementation instead of compileOnly after CBCMW is compatible with 6.0
-    compileOnly fg.deobf("maven.modrinth:cbcmodernwarfare:${cbc_mw_version}+mc.${minecraft_version}-forge")
-
-    //CBCAT
-    //replace implementation instead of compileOnly after CBCAT is compatible with 6.0
-    compileOnly( fg.deobf("maven.modrinth:create-big-cannons-advanced-technologies:${cbc_at_version}-${minecraft_version}"))
-
-    //CBCWPF
-    compileOnly fg.deobf("maven.modrinth:cbc-warium-projectiles:${cbc_wpf_version}")
-    compileOnly fg.deobf("maven.modrinth:cbc-warium-projectiles:${cbc_wpf_version}")
-
-    //JEI
-//    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
-//    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
-    runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
-
-    compileOnly fg.deobf("maven.modrinth:architectury-api:${architectury_api_version}+forge")
-
-    //CC
-    // Forge Gradle
-    compileOnly("cc.tweaked:cc-tweaked-$minecraft_version-core-api:$cc_tweaked_version")
-    compileOnly(fg.deobf("cc.tweaked:cc-tweaked-$minecraft_version-forge-api:$cc_tweaked_version"))
-    runtimeOnly(fg.deobf("cc.tweaked:cc-tweaked-$minecraft_version-forge:$cc_tweaked_version"))
+    // CC:Tweaked
+    compileOnly("cc.tweaked:cc-tweaked-${minecraft_version}-core-api:${cc_tweaked_version}")
+    compileOnly("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_tweaked_version}")
+    runtimeOnly("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_tweaked_version}")
 
     annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
-
-
 }
 
-mixin {
-    add sourceSets.main, 'createradar.refmap.json'
-    config 'create_radar.mixins.json'
-}
-
-// This block of code expands all declared replace properties in the specified resource targets.
-// A missing property will result in an error. Properties are expanded using ${} Groovy notation.
-// When "copyIdeResources" is enabled, this will also run before the game launches in IDE environments.
-// See https://docs.gradle.org/current/dsl/org.gradle.language.jvm.tasks.ProcessResources.html
 tasks.named('processResources', ProcessResources).configure {
     var replaceProperties = [
             minecraft_version   : minecraft_version, minecraft_version_range: minecraft_version_range,
-            forge_version       : forge_version, forge_version_range: forge_version_range,
+            neo_version         : neo_version, neo_version_range: neo_version_range,
             loader_version_range: loader_version_range,
             mod_id              : mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version,
             mod_authors         : mod_authors, mod_description: mod_description, create_version_range: create_version_range
     ]
     inputs.properties replaceProperties
 
-    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
         expand replaceProperties + [project: project]
     }
 }
 
-// Example for how to get properties into the manifest for reading at runtime.
 tasks.named('jar', Jar).configure {
     manifest {
         attributes([
                 'Specification-Title'     : mod_id,
                 'Specification-Vendor'    : mod_authors,
-                'Specification-Version'   : '1', // We are version 1 of ourselves
+                'Specification-Version'   : '1',
                 'Implementation-Title'    : project.name,
                 'Implementation-Version'  : project.jar.archiveVersion,
                 'Implementation-Vendor'   : mod_authors,
@@ -205,12 +163,8 @@ tasks.named('jar', Jar).configure {
                 'MixinConfigs'            : 'create_radar.mixins.json'
         ])
     }
-
-    // This is the preferred method to reobfuscate your jar file
-    finalizedBy 'reobfJar'
 }
 
-
 tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+    options.encoding = 'UTF-8'
 }

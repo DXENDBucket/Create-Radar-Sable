@@ -477,13 +477,13 @@ public class SphericalPolygonsSet extends AbstractRegion<Sphere2D, Sphere1D> {
         // as the polygons is neither empty nor full, it has some boundaries and cut hyperplanes
         final BSPTree<Sphere2D> root = getTree(false);
         if (isEmpty(root.getMinus()) && isFull(root.getPlus())) {
-            // the polygon covers an hemisphere, and its boundary is one 2π long edge
+            // the polygon covers an hemisphere, and its boundary is one 2蟺 long edge
             final Circle circle = (Circle) root.getCut().getHyperplane();
             return new EnclosingBall<Sphere2D, S2Point>(new S2Point(circle.getPole()).negate(),
                                                         0.5 * FastMath.PI);
         }
         if (isFull(root.getMinus()) && isEmpty(root.getPlus())) {
-            // the polygon covers an hemisphere, and its boundary is one 2π long edge
+            // the polygon covers an hemisphere, and its boundary is one 2蟺 long edge
             final Circle circle = (Circle) root.getCut().getHyperplane();
             return new EnclosingBall<Sphere2D, S2Point>(new S2Point(circle.getPole()),
                                                         0.5 * FastMath.PI);

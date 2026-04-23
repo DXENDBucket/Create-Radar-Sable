@@ -1,20 +1,27 @@
 package com.happysg.radar.block.monitor;
 
+import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.networking.NetworkHandler;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
  * Client -> Server: select a track on a given monitor controller.
  */
-public class MonitorSelectionPacket {
+public class MonitorSelectionPacket implements CustomPacketPayload {
+    public static final Type<MonitorSelectionPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(CreateRadar.MODID, "monitor_selection"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, MonitorSelectionPacket> STREAM_CODEC =
+            StreamCodec.of((buf, pkt) -> encode(pkt, buf), MonitorSelectionPacket::decode);
 
 
     private final BlockPos controllerPos;
@@ -39,13 +46,10 @@ public class MonitorSelectionPacket {
         return new MonitorSelectionPacket(pos, id);
     }
 
-    public static void handle(MonitorSelectionPacket msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    public static void handle(MonitorSelectionPacket msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
 
-            if(ctx.get().getSender() == null) return;
-
-            ServerPlayer sp = ctx.get().getSender();
-            if(sp == null) return;
+            if (!(ctx.player() instanceof ServerPlayer sp)) return;
             if (!(sp.level().getBlockEntity(msg.controllerPos) instanceof MonitorBlockEntity be)){
 
                 return;
@@ -81,10 +85,14 @@ public class MonitorSelectionPacket {
 
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     public static void send(BlockPos controllerPos, String selectedId) {
         NetworkHandler.CHANNEL.sendToServer(new MonitorSelectionPacket(controllerPos, selectedId));
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

@@ -1,4 +1,4 @@
-﻿package com.happysg.radar.registry;
+package com.happysg.radar.registry;
 
 import com.happysg.radar.block.behavior.networks.NetworkData;
 import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
@@ -28,9 +28,8 @@ import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.versions.forge.ForgeVersion;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.loading.FMLPaths;
 
 import javax.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
@@ -435,7 +434,7 @@ public class  ModCommands {
 
             for (BlockPos ep : group.weaponEndpoints) {
                 source.sendSuccess(() ->
-                                Component.literal("   • ")
+                                Component.literal("   ? ")
                                         .append(Component.literal(ep.toShortString())
                                                 .withStyle(ChatFormatting.WHITE)),
                         false
@@ -523,9 +522,12 @@ public class  ModCommands {
         }
 
         private static void addVersions(MinecraftServer server, List<String> out) {
-            // i wrote this so i can verify minecraft/forge are exactly what i expect
+            // i wrote this so i can verify minecraft/neoforge are exactly what i expect
             out.add("Minecraft: " + server.getServerVersion());
-            out.add("Forge: " + ForgeVersion.getVersion());
+            out.add("NeoForge: " + ModList.get()
+                    .getModContainerById("neoforge")
+                    .map(mod -> mod.getModInfo().getVersion().toString())
+                    .orElse("unknown"));
             out.add("");
         }
 

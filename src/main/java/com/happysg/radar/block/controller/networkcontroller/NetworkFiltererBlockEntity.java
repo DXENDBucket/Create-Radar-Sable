@@ -31,12 +31,12 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemStackHandler;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemStackHandler;
 import org.slf4j.Logger;
+import com.happysg.radar.registry.ModBlockEntityTypes;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -308,8 +308,6 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         }
     };
 
-    private LazyOptional<IItemHandler> handler = LazyOptional.of(() -> inventory);
-
     private final CompoundTag[] slotNbt = new CompoundTag[3];
 
     public NetworkFiltererBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -450,7 +448,7 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 //    private boolean isIgnoredByIdentification(RadarTrack track, @Nullable ServerLevel sl, Set<String> ignoreList) {
 //        if (track == null || ignoreList == null || ignoreList.isEmpty()) return false;
 //
-//        // PLAYER → username
+//        // PLAYER 鈫?username
 //        if (track.trackCategory() == TrackCategory.PLAYER) {
 //            if (sl == null) return false;
 //
@@ -597,7 +595,6 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
             updateSlotNbtFromInventory(i);
         }
 
-        handler = LazyOptional.of(() -> inventory);
     }
 
     // Sync to client
@@ -612,18 +609,9 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         return ClientboundBlockEntityDataPacket.create(this);
     }
 
-    // Capabilities
-    @Nonnull
-    @Override
-    public <T> LazyOptional<T> getCapability(@Nonnull Capability<T> cap, @Nullable Direction side) {
-        if (cap == ForgeCapabilities.ITEM_HANDLER) return handler.cast();
-        return super.getCapability(cap, side);
-    }
-
     @Override
     public void onLoad() {
         super.onLoad();
-        handler = LazyOptional.of(() -> inventory);
         for (int i = 0; i < inventory.getSlots(); i++) updateSlotNbtFromInventory(i);
 
         if (level instanceof ServerLevel sl) {
@@ -631,14 +619,16 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         }
     }
 
-    @Override
-    public void invalidateCaps() {
-        super.invalidateCaps();
-        handler.invalidate();
-    }
-
     public IItemHandler getItemHandler() {
         return inventory;
+    }
+
+    public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK,
+                ModBlockEntityTypes.NETWORK_FILTER_BLOCK_ENTITY.get(),
+                (be, side) -> be.inventory
+        );
     }
     public void applyFiltersToNetwork() {
         if (level == null || level.isClientSide) return;

@@ -1,20 +1,28 @@
 package com.happysg.radar.networking.packets;
 
+import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity;
 import com.happysg.radar.item.binos.Binoculars;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import javax.annotation.Nullable;
-import java.util.function.Supplier;
 
-public class FirePacket {
+public class FirePacket implements CustomPacketPayload {
+    public static final Type<FirePacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(CreateRadar.MODID, "fire"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, FirePacket> STREAM_CODEC =
+            StreamCodec.of((buf, pkt) -> encode(pkt, buf), FirePacket::decode);
 
     private static final String TAG_FILTERER_POS = "filtererPos";
 
@@ -31,10 +39,9 @@ public class FirePacket {
         return new FirePacket(buf.readBoolean());
     }
 
-    public static void handle(FirePacket msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            Player player = ctx.get().getSender();
-            if (player == null) return;
+    public static void handle(FirePacket msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            Player player = ctx.player();
             if (!(player.level() instanceof ServerLevel serverLevel)) return;
 
            // if (!player.isUsingItem()) return;
@@ -61,11 +68,15 @@ public class FirePacket {
             filtererBe.setChanged();
         });
 
-        ctx.get().setPacketHandled(true);
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
     private static ItemStack findBinosStack(Player player) {
-        // i prioritize “using item” (scoped) because that’s the cleanest intent
+        // i prioritize 鈥渦sing item鈥?(scoped) because that鈥檚 the cleanest intent
         ItemStack using = player.getUseItem();
         if (!using.isEmpty() && using.getItem() instanceof Binoculars) return using;
 

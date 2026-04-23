@@ -7,9 +7,9 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -18,15 +18,14 @@ import java.util.Set;
  * Runs ONE "aim+fire decision" tick per mount group per server tick.
  * This prevents yaw/pitch/fire from being evaluated on different ticks.
  */
-@Mod.EventBusSubscriber(modid = CreateRadar.MODID)
+@EventBusSubscriber(modid = CreateRadar.MODID)
 public final class WeaponGroupCoordinator {
 
     private static final int REFRESH_EVERY_TICKS = 1; // keep controllers fresh (was 5)
 
     @SubscribeEvent
-    public static void onLevelTick(TickEvent.LevelTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (!(event.level instanceof ServerLevel sl)) return;
+    public static void onLevelTick(LevelTickEvent.Post event) {
+        if (!(event.getLevel() instanceof ServerLevel sl)) return;
 
         WeaponNetworkData wnd = WeaponNetworkData.get(sl);
         if (wnd == null) return;

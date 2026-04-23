@@ -7,7 +7,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * i’m tracking acceleration in tick space:
+ * i鈥檓 tracking acceleration in tick space:
  * - velocity is blocks/tick
  * - acceleration is blocks/tick^2
  *

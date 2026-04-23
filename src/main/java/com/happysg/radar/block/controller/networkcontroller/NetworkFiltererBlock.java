@@ -32,8 +32,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import org.jetbrains.annotations.Nullable;
@@ -156,7 +155,7 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
             BlockEntity be = world.getBlockEntity(pos);
             if (!(be instanceof NetworkFiltererBlockEntity netFC)) return InteractionResult.PASS;
 
-            IItemHandler inv = netFC.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+            IItemHandler inv = netFC.getItemHandler();
             if (inv == null) return InteractionResult.PASS;
 
             // extract one item
@@ -207,7 +206,7 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
                 return InteractionResult.PASS;
             }
 
-            IItemHandler inv = netFC.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+            IItemHandler inv = netFC.getItemHandler();
 
             if (inv == null) return InteractionResult.PASS;
 
@@ -240,14 +239,15 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
                     }
 
                     // Drop any inventory contents (if present)
-                    be.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent(handler -> {
+                    if (be instanceof NetworkFiltererBlockEntity filterer) {
+                        IItemHandler handler = filterer.getItemHandler();
                         for (int i = 0; i < handler.getSlots(); i++) {
                             ItemStack stack = handler.getStackInSlot(i);
                             if (!stack.isEmpty()) {
                                 Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), stack.copy());
                             }
                         }
-                    });
+                    }
                 }
             }
         }
@@ -270,7 +270,7 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
             String name = s.getHoverName().getString();
             int count = s.getCount();
 
-            // don't create a tag if it doesn't exist — use hasTag() / getTag()
+            // don't create a tag if it doesn't exist 鈥?use hasTag() / getTag()
             String nbtString;
             if (s.hasTag()) {
                 CompoundTag tag = s.getTag(); // may be non-null if hasTag() true

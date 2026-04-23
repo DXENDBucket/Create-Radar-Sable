@@ -12,7 +12,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.TickEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 public class MonitorInputHandler {
 
@@ -66,10 +66,10 @@ public class MonitorInputHandler {
         return bestTrack;
     }
 
-    public static void monitorPlayerHovering(TickEvent.PlayerTickEvent event) {
+    public static void monitorPlayerHovering(PlayerTickEvent.Post event) {
 
-        Player player = event.player;
-        Level level = event.player.level();
+        Player player = event.getEntity();
+        Level level = player.level();
         if (!level.isClientSide())
             return;
         Vec3 hit = player.pick(5, 0.0F, false).getLocation();

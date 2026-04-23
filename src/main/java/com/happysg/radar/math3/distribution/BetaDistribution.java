@@ -275,7 +275,7 @@ public class BetaDistribution extends AbstractRealDistribution {
     * </p>
     * <p>
     * R. C. H. Cheng, "Generating beta variates with nonintegral shape parameters.".
-    *                 Communications of the ACM, 21, 317â€“322, 1978.
+    *                 Communications of the ACM, 21, 317芒鈧€?22, 1978.
     * </p>
     */
     @Override
@@ -286,7 +286,7 @@ public class BetaDistribution extends AbstractRealDistribution {
     /** Utility class implementing Cheng's algorithms for beta distribution sampling.
      * <p>
      * R. C. H. Cheng, "Generating beta variates with nonintegral shape parameters.".
-     *                 Communications of the ACM, 21, 317â€“322, 1978.
+     *                 Communications of the ACM, 21, 317芒鈧€?22, 1978.
      * </p>
      * @since 3.6
      */

@@ -29,7 +29,7 @@ import com.tterrag.registrate.util.entry.BlockEntry;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.material.MapColor;
-import net.minecraftforge.client.model.generators.ConfiguredModel;
+import net.neoforged.neoforge.client.model.generators.ConfiguredModel;
 
 import static com.happysg.radar.CreateRadar.REGISTRATE;
 import static com.simibubi.create.foundation.data.TagGen.axeOrPickaxe;

@@ -290,7 +290,7 @@ public class ZipfDistribution extends AbstractIntegerDistribution {
      * Utility class implementing a rejection inversion sampling method for a discrete,
      * bounded Zipf distribution that is based on the method described in
      * <p>
-     * Wolfgang Hörmann and Gerhard Derflinger
+     * Wolfgang H枚rmann and Gerhard Derflinger
      * "Rejection-inversion to generate variates from monotone discrete distributions."
      * ACM Transactions on Modeling and Computer Simulation (TOMACS) 6.3 (1996): 169-184.
      * <p>

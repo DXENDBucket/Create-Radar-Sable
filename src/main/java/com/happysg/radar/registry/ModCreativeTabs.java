@@ -10,9 +10,9 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
 
 import java.util.function.Supplier;
@@ -22,11 +22,11 @@ import static com.happysg.radar.CreateRadar.REGISTRATE;
 public class ModCreativeTabs {
     public static DeferredRegister<CreativeModeTab> CREATIVE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, CreateRadar.MODID);
 
-    public static final RegistryObject<CreativeModeTab> RADAR_CREATIVE_TAB = addTab("radar", "Create: Radars",
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> RADAR_CREATIVE_TAB = addTab("radar", "Create: Radars",
             ModBlocks.MONITOR::asStack);
 
 
-    public static RegistryObject<CreativeModeTab> addTab(String id, String name, Supplier<ItemStack> icon) {
+    public static DeferredHolder<CreativeModeTab, CreativeModeTab> addTab(String id, String name, Supplier<ItemStack> icon) {
         String itemGroupId = "itemGroup." + CreateRadar.MODID + "." + id;
         REGISTRATE.addRawLang(itemGroupId, name);
 

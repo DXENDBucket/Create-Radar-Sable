@@ -8,22 +8,22 @@ import com.happysg.radar.registry.ModKeybinds;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ComputeFovModifierEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ComputeFovModifierEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.slf4j.Logger;
 
-@Mod.EventBusSubscriber(value = Dist.CLIENT, modid = CreateRadar.MODID)
+@EventBusSubscriber(value = Dist.CLIENT, modid = CreateRadar.MODID)
 public class BinocularHandler {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static boolean wasDown = false;
     private static boolean pressWasValid = false;
     private static final float SENS_MULTIPLIER = 0.25f;
-    private static final float BINOCULAR_FOV = .1f; // ~6–7x zoom
+    private static final float BINOCULAR_FOV = .1f; // ~6鈥?x zoom
     private static int updateCooldown = 0;
     private static float lastYaw;
     private static float lastPitch;
@@ -31,9 +31,7 @@ public class BinocularHandler {
 
     private static Double savedSensitivity = null;
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-
+    public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         if (player == null) return;
@@ -63,7 +61,7 @@ public class BinocularHandler {
             NetworkHandler.CHANNEL.sendToServer(new RaycastPacket());
         }
 
-        // ───── key pressed ─────
+        // 鈹€鈹€鈹€鈹€鈹€ key pressed 鈹€鈹€鈹€鈹€鈹€
         if (isDown && !wasDown) {
             pressWasValid = isValid(player);
             if (pressWasValid) {
@@ -74,7 +72,7 @@ public class BinocularHandler {
             }
         }
 
-        // ───── key held ─────
+        // 鈹€鈹€鈹€鈹€鈹€ key held 鈹€鈹€鈹€鈹€鈹€
         if (isDown && pressWasValid) {
             if (--updateCooldown <= 0) {
                 // i refresh both the slave command and the target
@@ -85,7 +83,7 @@ public class BinocularHandler {
             }
         }
 
-        // ───── key released ─────
+        // 鈹€鈹€鈹€鈹€鈹€ key released 鈹€鈹€鈹€鈹€鈹€
         if (!isDown && wasDown) {
             if (pressWasValid) {
                 NetworkHandler.CHANNEL.sendToServer(new FirePacket(false));

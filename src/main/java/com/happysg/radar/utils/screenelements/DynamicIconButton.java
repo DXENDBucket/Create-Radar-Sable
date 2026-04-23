@@ -62,7 +62,7 @@ public class DynamicIconButton extends IconButton {
     public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         ModGuiTextures icon = isOn ? iconOn : iconOff;
 
-        // Draw only the icon — skip IconButton's default 16x16 background
+        // Draw only the icon 鈥?skip IconButton's default 16x16 background
         graphics.blit(
                 icon.location,
                 getX(), getY(),

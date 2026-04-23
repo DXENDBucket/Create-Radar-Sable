@@ -25,7 +25,6 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.fml.DistExecutor;
 import org.jetbrains.annotations.NotNull;
 
 
@@ -159,14 +158,10 @@ public class MonitorBlock extends HorizontalDirectionalBlock implements IBE<Moni
     private static void openMonitorScreenClient(MonitorBlockEntity anyPiece) {
         // i pass only the position across, not the block entity
         BlockPos pos = anyPiece.getBlockPos();
-
-        DistExecutor.unsafeRunWhenOn(
-                net.minecraftforge.api.distmarker.Dist.CLIENT,
-                () -> () -> Client.openMonitorScreen(pos)
-        );
+        Client.openMonitorScreen(pos);
     }
 
-    @net.minecraftforge.api.distmarker.OnlyIn(net.minecraftforge.api.distmarker.Dist.CLIENT)
+    @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
     private static final class Client {
         static void openMonitorScreen(BlockPos clickedPos) {
             var mc = net.minecraft.client.Minecraft.getInstance();

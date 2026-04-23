@@ -30,10 +30,10 @@ import com.happysg.radar.math3.geometry.Space;
  * Enclosing Disks (Balls and Ellipsoids)</a> by Emo Welzl, Lecture Notes in Computer Science
  * 555 (1991) 359-370. The pivoting improvement published in the paper <a
  * href="http://www.inf.ethz.ch/personal/gaertner/texts/own_work/esa99_final.pdf">Fast and
- * Robust Smallest Enclosing Balls</a>, by Bernd Gärtner and further modified in
+ * Robust Smallest Enclosing Balls</a>, by Bernd G盲rtner and further modified in
  * paper <a
  * href=http://www.idt.mdh.se/kurser/ct3340/ht12/MINICONFERENCE/FinalPapers/ircse12_submission_30.pdf">
- * Efficient Computation of Smallest Enclosing Balls in Three Dimensions</a> by Linus Källberg
+ * Efficient Computation of Smallest Enclosing Balls in Three Dimensions</a> by Linus K盲llberg
  * to avoid performing local copies of data have been included.
  * </p>
  * @param <S> Space type.
@@ -65,12 +65,12 @@ public class WelzlEncloser<S extends Space, P extends Point<S>> implements Enclo
             return generator.ballOnSupport(new ArrayList<P>());
         }
 
-        // Emo Welzl algorithm with Bernd Gärtner and Linus Källberg improvements
+        // Emo Welzl algorithm with Bernd G盲rtner and Linus K盲llberg improvements
         return pivotingBall(points);
 
     }
 
-    /** Compute enclosing ball using Gärtner's pivoting heuristic.
+    /** Compute enclosing ball using G盲rtner's pivoting heuristic.
      * @param points points to be enclosed
      * @return enclosing ball
      */
@@ -105,7 +105,7 @@ public class WelzlEncloser<S extends Space, P extends Point<S>> implements Enclo
             }
 
             // it was an interesting point, move it to the front
-            // according to Gärtner's heuristic
+            // according to G盲rtner's heuristic
             extreme.add(0, farthest);
 
             // prune the least interesting points

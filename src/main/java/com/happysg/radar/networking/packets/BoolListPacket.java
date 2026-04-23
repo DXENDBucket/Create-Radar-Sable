@@ -1,16 +1,24 @@
 package com.happysg.radar.networking.packets;
 
+import com.happysg.radar.CreateRadar;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class BoolListPacket implements CustomPacketPayload {
+    public static final Type<BoolListPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(CreateRadar.MODID, "bool_list"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, BoolListPacket> STREAM_CODEC =
+            StreamCodec.of((buf, pkt) -> encode(pkt, buf), BoolListPacket::decode);
 
-public class BoolListPacket {
     private static final int DETECTION_FLAG_COUNT = 6;
     private static final int TARGET_FLAG_COUNT = 7;
 
@@ -40,11 +48,9 @@ public class BoolListPacket {
         return new BoolListPacket(main, f, key);
     }
 
-    public static void handle(BoolListPacket pkt, Supplier<NetworkEvent.Context> ctxSupplier) {
-        NetworkEvent.Context ctx = ctxSupplier.get();
+    public static void handle(BoolListPacket pkt, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
-            ServerPlayer player = ctx.getSender();
-            if (player == null) return;
+            if (!(ctx.player() instanceof ServerPlayer player)) return;
 
             if (pkt.flags == null) return;
 
@@ -107,7 +113,10 @@ public class BoolListPacket {
                 ex.printStackTrace();
             }
         });
+    }
 
-        ctx.setPacketHandled(true);
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

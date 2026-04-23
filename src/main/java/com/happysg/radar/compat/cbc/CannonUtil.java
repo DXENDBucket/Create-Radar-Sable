@@ -190,7 +190,7 @@ public class CannonUtil {
         if(!Mods.CBCMODERNWARFARE.isLoaded()) return 0f;
         if(contraptionEntity == null) return 0f;
         Map<BlockPos, BlockEntity> presentBlockEntities = contraptionEntity.presentBlockEntities;
-        LOGGER.debug(" → presentBlockEntities count = {}", presentBlockEntities.size());
+        LOGGER.debug(" 鈫?presentBlockEntities count = {}", presentBlockEntities.size());
         if(presentBlockEntities.isEmpty()) return 0f;
         int barrelCount = 0;
         RotarycannonMaterial material = null;
@@ -252,7 +252,7 @@ public class CannonUtil {
     }
 
     public static float getInitialVelocity(AbstractMountedCannonContraption cannon, ServerLevel level) {
-        LOGGER.debug("→ getInitialVelocity for contraption={} mods: BigCannon={}, AutoCannon={}, Rotary={}, Medium={}, Energy={}",
+        LOGGER.debug("鈫?getInitialVelocity for contraption={} mods: BigCannon={}, AutoCannon={}, Rotary={}, Medium={}, Energy={}",
                 cannon != null ? cannon.getClass().getSimpleName() : "null",
                 isBigCannon(cannon), isAutoCannon(cannon),
                 isRotaryCannon(cannon), isMediumCannon(cannon), isEnergyCannon(cannon)
@@ -260,38 +260,38 @@ public class CannonUtil {
         if (cannon == null) return 0f;
 
         if (CBCWPFCompat.isShupapiumAutocannon(cannon)) {
-            LOGGER.debug("   • Shupapium WPF muzzle speed = {}", CBCWPFCompat.resolveShupapiumMuzzleSpeed(cannon));
+            LOGGER.debug("   鈥?Shupapium WPF muzzle speed = {}", CBCWPFCompat.resolveShupapiumMuzzleSpeed(cannon));
             return CBCWPFCompat.resolveShupapiumMuzzleSpeed(cannon);
         }
 
         if (isEnergyCannon(cannon)) {
             float velocity = ((MountedEnergyCannonContraption) cannon).getMuzzleVelocity(level);
-            LOGGER.debug("   • EnergyCannon speed = {}", velocity);
+            LOGGER.debug("   鈥?EnergyCannon speed = {}", velocity);
             return velocity;
         }
 
         if (isBigCannon(cannon)) {
-            LOGGER.debug("   • BigCannon speed = {}", getBigCannonSpeed(level,cannon, (PitchOrientedContraptionEntity)cannon.entity));
+            LOGGER.debug("   鈥?BigCannon speed = {}", getBigCannonSpeed(level,cannon, (PitchOrientedContraptionEntity)cannon.entity));
             return getBigCannonSpeed(level, cannon ,(PitchOrientedContraptionEntity)cannon.entity);
         } else if (isAutoCannon(cannon)) {
-            LOGGER.debug("   • AutoCannon speed = {}", getAutoCannonSpeed(cannon));
+            LOGGER.debug("   鈥?AutoCannon speed = {}", getAutoCannonSpeed(cannon));
             return getAutoCannonSpeed(cannon);
         }
         else if(isRotaryCannon(cannon)){
-            LOGGER.debug("   • RotaryCannon speed = {}", getRotarySpeed(cannon));
+            LOGGER.debug("   鈥?RotaryCannon speed = {}", getRotarySpeed(cannon));
             return getRotarySpeed(cannon);
         }
         else if(isMediumCannon(cannon)){
-            LOGGER.debug("   • MediumCannon speed = {}", getMediumCannonSpeed(cannon));
+            LOGGER.debug("   鈥?MediumCannon speed = {}", getMediumCannonSpeed(cannon));
             return getMediumCannonSpeed(cannon);
         } else if(isTwinAutocannon(cannon)){
-            LOGGER.debug("   • TwinACannon speed = {}", getAutoCannonSpeed(cannon));
+            LOGGER.debug("   鈥?TwinACannon speed = {}", getAutoCannonSpeed(cannon));
             return getAutoCannonSpeed(cannon);
         } else if(isHeavyAutocannon(cannon)){
-            LOGGER.debug("   • HeavyACannon speed = {}", getAutoCannonSpeed(cannon));
+            LOGGER.debug("   鈥?HeavyACannon speed = {}", getAutoCannonSpeed(cannon));
             return getAutoCannonSpeed(cannon);
         }
-        LOGGER.debug("   • No known cannon type → returning 0");
+        LOGGER.debug("   鈥?No known cannon type 鈫?returning 0");
         return 0;
     }
 

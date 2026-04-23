@@ -1,16 +1,25 @@
 package com.happysg.radar.networking.packets;
 
+import com.happysg.radar.CreateRadar;
 import com.happysg.radar.networking.networkhandlers.ListNBTHandler;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Supplier;
 
-public class SaveListsPacket {
+public class SaveListsPacket implements CustomPacketPayload {
+    public static final Type<SaveListsPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(CreateRadar.MODID, "save_lists"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, SaveListsPacket> STREAM_CODEC =
+            StreamCodec.of((buf, pkt) -> encode(pkt, buf), SaveListsPacket::decode);
+
     private final List<String> entries;
      final String idString;
     private final boolean isIdString;
@@ -25,7 +34,7 @@ public class SaveListsPacket {
         this.isIdString   = false;
     }
 
-    /** Constructor for single‐string mode **/
+    /** Constructor for single鈥恠tring mode **/
     public SaveListsPacket(String idString) {
         if (idString == null) {
             throw new IllegalArgumentException("idString cannot be null");
@@ -79,11 +88,9 @@ public class SaveListsPacket {
 
 
     /** Handle on the server: call the appropriate ListNBTHandler method **/
-    public static void handle(SaveListsPacket pkt, Supplier<NetworkEvent.Context> ctxSupplier) {
-        NetworkEvent.Context ctx = ctxSupplier.get();
+    public static void handle(SaveListsPacket pkt, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
-            ServerPlayer player = ctx.getSender();
-            if (player == null) return;
+            if (!(ctx.player() instanceof ServerPlayer player)) return;
 
             if (pkt.isIdString) {
                 ListNBTHandler.saveStringToHeldItem(player, pkt.idString);
@@ -92,6 +99,10 @@ public class SaveListsPacket {
             }
             player.getInventory().setChanged(); // force sync
         });
-        ctx.setPacketHandled(true);
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

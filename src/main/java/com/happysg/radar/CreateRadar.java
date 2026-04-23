@@ -1,6 +1,7 @@
 package com.happysg.radar;
 
 import com.happysg.radar.block.datalink.DataLinkBlockItem;
+import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity;
 import com.happysg.radar.block.monitor.MonitorInputHandler;
 import com.happysg.radar.compat.cbcwpf.CBCWPFCompatRegister;
 import com.happysg.radar.compat.computercraft.CCCompatRegister;
@@ -12,7 +13,6 @@ import com.happysg.radar.compat.cbc.CBCCompatRegister;
 import com.happysg.radar.compat.cbcmw.CBCMWCompatRegister;
 
 import com.happysg.radar.config.RadarConfig;
-import com.happysg.radar.networking.ModMessages;
 import com.happysg.radar.networking.NetworkHandler;
 import com.happysg.radar.registry.*;
 
@@ -30,20 +30,18 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 
-import net.minecraftforge.client.ConfigScreenHandler;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModContainer;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -66,13 +64,10 @@ public class CreateRadar {
         ModCommands.register(event.getDispatcher());
     }
 
-    public CreateRadar() {
+    public CreateRadar(IEventBus modEventBus, ModContainer container) {
         getLogger().info("Initializing Create Radar!");
 
-        ModLoadingContext context = ModLoadingContext.get();
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
-
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
         REGISTRATE.registerEventListeners(modEventBus);
 
         ModItems.register();
@@ -81,19 +76,16 @@ public class CreateRadar {
         ModCreativeTabs.register(modEventBus);
         ModLang.register();
         ModPartials.init();
-        RadarConfig.register(context);
-        NetworkHandler.register();
+        RadarConfig.register(container);
+        modEventBus.addListener(NetworkHandler::register);
         modEventBus.addListener(CreateRadar::init);
         modEventBus.addListener(CreateRadar::clientInit);
         modEventBus.addListener(CreateRadar::onLoadComplete);
-        ModContainer container = ModList.get()
-                .getModContainerById(CreateRadar.MODID)
-                .orElseThrow(() -> new IllegalStateException("Radar mod container missing on LoadComplete"));
+        modEventBus.addListener(NetworkFiltererBlockEntity::registerCapabilities);
 
-        container.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
-                () -> new ConfigScreenHandler.ConfigScreenFactory(RadarConfig::createConfigScreen));
+        container.registerExtensionPoint(IConfigScreenFactory.class, RadarConfig::createConfigScreen);
 
-        MinecraftForge.EVENT_BUS.addListener(CreateRadar::clientTick);
+        NeoForge.EVENT_BUS.addListener(CreateRadar::clientTick);
         ModSounds.register(modEventBus);
 
         // Compat modules
@@ -111,7 +103,7 @@ public class CreateRadar {
 
     }
 
-    private static void clientTick(TickEvent.ClientTickEvent event) {
+    private static void clientTick(ClientTickEvent.Post event) {
         DataLinkBlockItem.clientTick();
     }
 
@@ -120,7 +112,7 @@ public class CreateRadar {
     }
 
     public static ResourceLocation asResource(String path) {
-        return new ResourceLocation(MODID, path);
+        return ResourceLocation.fromNamespaceAndPath(MODID, path);
     }
 
 
@@ -134,7 +126,7 @@ public class CreateRadar {
 
     public static void clientInit(final FMLClientSetupEvent event) {
         PonderIndex.addPlugin(new RadarPonderPlugin());
-        MinecraftForge.EVENT_BUS.addListener(MonitorInputHandler::monitorPlayerHovering);
+        NeoForge.EVENT_BUS.addListener(MonitorInputHandler::monitorPlayerHovering);
     }
 
 
@@ -160,7 +152,6 @@ public class CreateRadar {
             BlockStressValues.IMPACTS.register(ModBlocks.CREATIVE_RADAR_PLATE_BLOCK.get(), () -> 0d);
         });
 
-        ModMessages.register();
         ModDisplayBehaviors.register();
         AllDataBehaviors.registerDefaults();
     }

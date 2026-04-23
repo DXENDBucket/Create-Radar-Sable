@@ -54,24 +54,24 @@ public class Beta {
     /** Maximum allowed numerical error. */
     private static final double DEFAULT_EPSILON = 1E-14;
 
-    /** The constant value of ½log 2π. */
+    /** The constant value of 陆log 2蟺. */
     private static final double HALF_LOG_TWO_PI = .9189385332046727;
 
     /**
      * <p>
-     * The coefficients of the series expansion of the Δ function. This function
+     * The coefficients of the series expansion of the 螖 function. This function
      * is defined as follows
      * </p>
-     * <center>Δ(x) = log Γ(x) - (x - 0.5) log a + a - 0.5 log 2π,</center>
+     * <center>螖(x) = log 螕(x) - (x - 0.5) log a + a - 0.5 log 2蟺,</center>
      * <p>
      * see equation (23) in Didonato and Morris (1992). The series expansion,
-     * which applies for x ≥ 10, reads
+     * which applies for x 鈮?10, reads
      * </p>
      * <pre>
      *                 14
      *                ====
      *             1  \                2 n
-     *     Δ(x) = ---  >    d  (10 / x)
+     *     螖(x) = ---  >    d  (10 / x)
      *             x  /      n
      *                ====
      *                n = 0
@@ -257,7 +257,7 @@ public class Beta {
 
 
     /**
-     * Returns the value of log Γ(a + b) for 1 ≤ a, b ≤ 2. Based on the
+     * Returns the value of log 螕(a + b) for 1 鈮?a, b 鈮?2. Based on the
      * <em>NSWC Library of Mathematics Subroutines</em> double precision
      * implementation, {@code DGSMLN}. In {@code BetaTest.testLogGammaSum()},
      * this private method is accessed through reflection.
@@ -289,7 +289,7 @@ public class Beta {
     }
 
     /**
-     * Returns the value of log[Γ(b) / Γ(a + b)] for a ≥ 0 and b ≥ 10. Based on
+     * Returns the value of log[螕(b) / 螕(a + b)] for a 鈮?0 and b 鈮?10. Based on
      * the <em>NSWC Library of Mathematics Subroutines</em> double precision
      * implementation, {@code DLGDIV}. In
      * {@code BetaTest.testLogGammaMinusLogGammaSum()}, this private method is
@@ -331,7 +331,7 @@ public class Beta {
     }
 
     /**
-     * Returns the value of Δ(b) - Δ(a + b), with 0 ≤ a ≤ b and b ≥ 10. Based
+     * Returns the value of 螖(b) - 螖(a + b), with 0 鈮?a 鈮?b and b 鈮?10. Based
      * on equations (26), (27) and (28) in Didonato and Morris (1992).
      *
      * @param a First argument.
@@ -376,7 +376,7 @@ public class Beta {
     }
 
     /**
-     * Returns the value of Δ(p) + Δ(q) - Δ(p + q), with p, q ≥ 10. Based on
+     * Returns the value of 螖(p) + 螖(q) - 螖(p + q), with p, q 鈮?10. Based on
      * the <em>NSWC Library of Mathematics Subroutines</em> double precision
      * implementation, {@code DBCORR}. In
      * {@code BetaTest.testSumDeltaMinusDeltaSum()}, this private method is
@@ -409,7 +409,7 @@ public class Beta {
     }
 
     /**
-     * Returns the value of log B(p, q) for 0 ≤ x ≤ 1 and p, q > 0. Based on the
+     * Returns the value of log B(p, q) for 0 鈮?x 鈮?1 and p, q > 0. Based on the
      * <em>NSWC Library of Mathematics Subroutines</em> implementation,
      * {@code DBETLN}.
      *

@@ -31,12 +31,12 @@ import com.happysg.radar.math3.util.FastMath;
  * <strong>Parameters:</strong>
  * The probability distribution function of {@code X} is given by (for {@code x >= k}):
  * <pre>
- *  α * k^α / x^(α + 1)
+ *  伪 * k^伪 / x^(伪 + 1)
  * </pre>
  * <p>
  * <ul>
  * <li>{@code k} is the <em>scale</em> parameter: this is the minimum possible value of {@code X},</li>
- * <li>{@code α} is the <em>shape</em> parameter: this is the Pareto index</li>
+ * <li>{@code 伪} is the <em>shape</em> parameter: this is the Pareto index</li>
  * </ul>
  *
  * @see <a href="http://en.wikipedia.org/wiki/Pareto_distribution">
@@ -173,11 +173,11 @@ public class ParetoDistribution extends AbstractRealDistribution {
     /**
      * {@inheritDoc}
      * <p>
-     * For scale {@code k}, and shape {@code α} of this distribution, the PDF
+     * For scale {@code k}, and shape {@code 伪} of this distribution, the PDF
      * is given by
      * <ul>
      * <li>{@code 0} if {@code x < k},</li>
-     * <li>{@code α * k^α / x^(α + 1)} otherwise.</li>
+     * <li>{@code 伪 * k^伪 / x^(伪 + 1)} otherwise.</li>
      * </ul>
      */
     public double density(double x) {
@@ -202,10 +202,10 @@ public class ParetoDistribution extends AbstractRealDistribution {
     /**
      * {@inheritDoc}
      * <p>
-     * For scale {@code k}, and shape {@code α} of this distribution, the CDF is given by
+     * For scale {@code k}, and shape {@code 伪} of this distribution, the CDF is given by
      * <ul>
      * <li>{@code 0} if {@code x < k},</li>
-     * <li>{@code 1 - (k / x)^α} otherwise.</li>
+     * <li>{@code 1 - (k / x)^伪} otherwise.</li>
      * </ul>
      */
     public double cumulativeProbability(double x)  {
@@ -236,10 +236,10 @@ public class ParetoDistribution extends AbstractRealDistribution {
     /**
      * {@inheritDoc}
      * <p>
-     * For scale {@code k} and shape {@code α}, the mean is given by
+     * For scale {@code k} and shape {@code 伪}, the mean is given by
      * <ul>
-     * <li>{@code ∞} if {@code α <= 1},</li>
-     * <li>{@code α * k / (α - 1)} otherwise.</li>
+     * <li>{@code 鈭瀩 if {@code 伪 <= 1},</li>
+     * <li>{@code 伪 * k / (伪 - 1)} otherwise.</li>
      * </ul>
      */
     public double getNumericalMean() {
@@ -252,10 +252,10 @@ public class ParetoDistribution extends AbstractRealDistribution {
     /**
      * {@inheritDoc}
      * <p>
-     * For scale {@code k} and shape {@code α}, the variance is given by
+     * For scale {@code k} and shape {@code 伪}, the variance is given by
      * <ul>
-     * <li>{@code ∞} if {@code 1 < α <= 2},</li>
-     * <li>{@code k^2 * α / ((α - 1)^2 * (α - 2))} otherwise.</li>
+     * <li>{@code 鈭瀩 if {@code 1 < 伪 <= 2},</li>
+     * <li>{@code k^2 * 伪 / ((伪 - 1)^2 * (伪 - 2))} otherwise.</li>
      * </ul>
      */
     public double getNumericalVariance() {

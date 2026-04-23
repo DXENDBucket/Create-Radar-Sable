@@ -7,21 +7,28 @@ import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.item.binos.Binoculars;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import javax.annotation.Nullable;
-import java.util.function.Supplier;
 
 import net.minecraft.network.FriendlyByteBuf;
 
-public class RaycastPacket {
+public class RaycastPacket implements CustomPacketPayload {
+    public static final Type<RaycastPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(CreateRadar.MODID, "raycast"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, RaycastPacket> STREAM_CODEC =
+            StreamCodec.of((buf, pkt) -> encode(pkt, buf), RaycastPacket::decode);
 
     // tune these however you want
     private static final double MAX_DISTANCE = RadarConfig.server().binoRaycastRange.get();
@@ -37,10 +44,9 @@ public class RaycastPacket {
         return new RaycastPacket();
     }
 
-    public static void handle(RaycastPacket msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            Player player = ctx.get().getSender();
-            if (player == null) return;
+    public static void handle(RaycastPacket msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            Player player = ctx.player();
             if (!(player.level() instanceof ServerLevel serverLevel)) return;
             if (!player.isUsingItem()) return;
 
@@ -64,7 +70,11 @@ public class RaycastPacket {
             }
         });
 
-        ctx.get().setPacketHandled(true);
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
 

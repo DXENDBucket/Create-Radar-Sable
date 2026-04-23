@@ -26,8 +26,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -197,7 +197,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 
 
 
-        // // Forward selection to the filterer BE at the group’s filterer position
+        // // Forward selection to the filterer BE at the group鈥檚 filterer position
         BlockPos filterpos = g.key.filtererPos();
         LOGGER.debug("MONITOR forwarding to filterer: filterPos={}, groupKey={}", filterpos, g.key);
 
@@ -437,7 +437,9 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     }
 
     public void showSafeZone() {
-        net.minecraftforge.fml.DistExecutor.safeRunWhenOn(Dist.CLIENT, () -> () -> Client.showSafeZone(this));
+        if (level != null && level.isClientSide) {
+            Client.showSafeZone(this);
+        }
     }
 
     @OnlyIn(Dist.CLIENT)

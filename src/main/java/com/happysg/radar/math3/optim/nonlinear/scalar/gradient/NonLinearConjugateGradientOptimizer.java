@@ -33,7 +33,7 @@ import com.happysg.radar.math3.optim.nonlinear.scalar.LineSearch;
 /**
  * Non-linear conjugate gradient optimizer.
  * <br/>
- * This class supports both the Fletcher-Reeves and the Polak-Ribière
+ * This class supports both the Fletcher-Reeves and the Polak-Ribi猫re
  * update formulas for the conjugate search directions.
  * It also supports optional preconditioning.
  * <br/>
@@ -59,21 +59,21 @@ public class NonLinearConjugateGradientOptimizer
      * two formulas:
      * <ul>
      *   <li>Fletcher-Reeves formula</li>
-     *   <li>Polak-Ribière formula</li>
+     *   <li>Polak-Ribi猫re formula</li>
      * </ul>
      *
      * On the one hand, the Fletcher-Reeves formula is guaranteed to converge
      * if the start point is close enough of the optimum whether the
-     * Polak-Ribière formula may not converge in rare cases. On the
-     * other hand, the Polak-Ribière formula is often faster when it
-     * does converge. Polak-Ribière is often used.
+     * Polak-Ribi猫re formula may not converge in rare cases. On the
+     * other hand, the Polak-Ribi猫re formula is often faster when it
+     * does converge. Polak-Ribi猫re is often used.
      *
      * @since 2.0
      */
     public enum Formula {
         /** Fletcher-Reeves formula. */
         FLETCHER_REEVES,
-        /** Polak-Ribière formula. */
+        /** Polak-Ribi猫re formula. */
         POLAK_RIBIERE
     }
 
