@@ -16,6 +16,8 @@ import static com.happysg.radar.CreateRadar.MODID;
 
 public class IdentificationFilterScreen extends AbstractSimiScreen {
 
+    private static final Component PLAYER_TOOLTIP = Component.translatable(MODID + ".radar_button.player");
+
     protected IconButton  playerFilter;
 
     protected IconButton confirmButton;
@@ -47,6 +49,19 @@ public class IdentificationFilterScreen extends AbstractSimiScreen {
         ms.popPose();
 
     }
+
+    @Override
+    public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        super.render(graphics, mouseX, mouseY, partialTicks);
+
+        if (playerFilter != null && playerFilter.isMouseOver(mouseX, mouseY)) {
+            graphics.pose().pushPose();
+            graphics.pose().translate(0, 0, 400);
+            graphics.renderTooltip(font, PLAYER_TOOLTIP, mouseX, mouseY);
+            graphics.pose().popPose();
+        }
+    }
+
     @Override
     protected void init() {
         setWindowSize(background.width, background.height);
@@ -56,7 +71,6 @@ public class IdentificationFilterScreen extends AbstractSimiScreen {
         int x = guiLeft;
         int y = guiTop;
         playerFilter = new IconButton(guiLeft + 41, guiTop + 25, ModGuiTextures.FILTER_BUTTON);
-        playerFilter.setToolTip(Component.translatable(MODID + ".radar_button.player"));
         playerFilter.withCallback(() -> Minecraft.getInstance().setScreen(new PlayerListScreen()));
         addRenderableWidget(playerFilter);
 

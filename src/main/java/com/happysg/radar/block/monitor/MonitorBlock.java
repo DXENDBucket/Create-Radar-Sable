@@ -162,29 +162,19 @@ public class MonitorBlock extends HorizontalDirectionalBlock implements IBE<Moni
 
 
     private static void openMonitorScreenClient(MonitorBlockEntity anyPiece) {
-        // i pass only the position across, not the block entity
-        BlockPos pos = anyPiece.getBlockPos();
-        Client.openMonitorScreen(pos);
-    }
+        var mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc.level == null) return;
 
-    @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
-    private static final class Client {
-        static void openMonitorScreen(BlockPos clickedPos) {
-            var mc = net.minecraft.client.Minecraft.getInstance();
-            if (mc.level == null) return;
+        BlockEntity be = mc.level.getBlockEntity(anyPiece.getBlockPos());
+        if (!(be instanceof MonitorBlockEntity clientPiece)) return;
 
-            // i re-fetch the BE client-side so i never carry server/common objects through DistExecutor
-            BlockEntity be = mc.level.getBlockEntity(clickedPos);
-            if (!(be instanceof MonitorBlockEntity anyPiece)) return;
+        MonitorBlockEntity controller = clientPiece.isController() ? clientPiece : clientPiece.getController();
+        if (controller == null) return;
 
-            MonitorBlockEntity controller = anyPiece.isController() ? anyPiece : anyPiece.getController();
-            if (controller == null) return;
+        BlockPos controllerPos = controller.getControllerPos();
+        if (controllerPos == null) controllerPos = controller.getBlockPos();
 
-            BlockPos controllerPos = controller.getControllerPos();
-            if (controllerPos == null) controllerPos = controller.getBlockPos();
-
-            mc.setScreen(new MonitorScreen(controllerPos));
-        }
+        mc.setScreen(new MonitorScreen(controllerPos));
     }
 
 

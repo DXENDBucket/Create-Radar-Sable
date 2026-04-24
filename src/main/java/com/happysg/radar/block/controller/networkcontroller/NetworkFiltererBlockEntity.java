@@ -9,7 +9,9 @@ import com.happysg.radar.block.behavior.networks.config.IdentificationConfig;
 import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.radar.behavior.RadarScanningBlockBehavior;
+import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.item.binos.Binoculars;
@@ -41,6 +43,7 @@ import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import org.slf4j.Logger;
 import com.happysg.radar.registry.ModBlockEntityTypes;
+import com.simibubi.create.content.contraptions.ControlledContraptionEntity;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -125,7 +128,7 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
         cachedTracks = radar.getTracks().stream()
                 .filter(detectionCache::test)
-                .filter(track -> !isFilteredRadarSableTarget(sl, radar, track))
+                .filter(track -> !isFilteredRadarSelfTarget(sl, radar, track))
                 .toList();
 
         // resolve current selected track from group.selectedTargetId
@@ -229,7 +232,8 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
     private void applySelectedTarget(ServerLevel sl, NetworkData data, NetworkData.Group group,
                                      @Nullable RadarTrack track, boolean wasAuto) {
-        if (isFilteredRadarSableTarget(sl, group.radarPos, track)) {
+        IRadar radar = getRadar(sl);
+        if (isFilteredRadarSelfTarget(sl, radar, track) || isFilteredRadarSelfTarget(sl, group.radarPos, track)) {
             track = null;
             wasAuto = false;
         }
@@ -249,7 +253,11 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         return filtererPos.distanceToSqr(pos);
     }
 
-    private boolean isFilteredRadarSableTarget(ServerLevel sl, @Nullable IRadar radar, @Nullable RadarTrack track) {
+    private boolean isFilteredRadarSelfTarget(ServerLevel sl, @Nullable IRadar radar, @Nullable RadarTrack track) {
+        if (isOwnRadarContraptionTarget(radar, track)) {
+            return true;
+        }
+
         if (radar instanceof BlockEntity radarBe) {
             Level radarLevel = radarBe.getLevel() != null ? radarBe.getLevel() : sl;
             Vec3 radarCenter = radarBe.getBlockPos().getCenter();
@@ -261,10 +269,10 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
             }
         }
 
-        return isFilteredRadarSableTarget(sl, radarPosCache, track);
+        return isFilteredRadarSelfTarget(sl, radarPosCache, track);
     }
 
-    private boolean isFilteredRadarSableTarget(ServerLevel sl, @Nullable BlockPos radarPos, @Nullable RadarTrack track) {
+    private boolean isFilteredRadarSelfTarget(ServerLevel sl, @Nullable BlockPos radarPos, @Nullable RadarTrack track) {
         if (track == null || !track.isSableSubLevel()) {
             return false;
         }
@@ -280,6 +288,18 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
     private boolean isFilteredSableTargetAt(Level queryLevel, @Nullable RadarTrack track, Vec3 position) {
         return SableRadarCompat.isTrackAtPosition(queryLevel, track, position);
+    }
+
+    private boolean isOwnRadarContraptionTarget(@Nullable IRadar radar, @Nullable RadarTrack track) {
+        if (track == null || track.trackCategory() != TrackCategory.CONTRAPTION) {
+            return false;
+        }
+        if (!(radar instanceof RadarBearingBlockEntity radarBearing)) {
+            return false;
+        }
+
+        ControlledContraptionEntity ownContraption = radarBearing.getMovedContraption();
+        return ownContraption != null && track.getId().equals(ownContraption.getUUID().toString());
     }
 
     private boolean anyCannonCanEngage(ServerLevel sl, RadarTrack track, boolean requireLos) {

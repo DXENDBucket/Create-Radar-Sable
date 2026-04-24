@@ -159,7 +159,7 @@ public class CannonLead {
         double muzzleSpeedPerTick = CannonUtil.getInitialVelocity(cannon, level);
         if (muzzleSpeedPerTick <= 0.0) return null;
 
-        Vec3 originNow = SableRadarCompat.projectToWorld(level, mount.getControllerBlockPos().above(2).getCenter());
+        Vec3 originNow = getMuzzleOrigin(level, mount);
         final double latencyTicks = 2.0; // tune 1..3
         int barrelLength = CannonUtil.getBarrelLength(cannon);
 
@@ -284,7 +284,7 @@ public class CannonLead {
         }
 
 
-        Vec3 originNow = SableRadarCompat.projectToWorld(level, mount.getControllerBlockPos().above(2).getCenter());
+        Vec3 originNow = getMuzzleOrigin(level, mount);
         int barrelLength = CannonUtil.getBarrelLength(cannon);
 
         BallisticPropertiesComponent bp = CannonUtil.getBallistics(cannon, level);
@@ -392,6 +392,19 @@ public class CannonLead {
         if (ticks < 60) ticks = 60;
         if (ticks > HARD_MAX_TICKS) ticks = HARD_MAX_TICKS;
         return ticks;
+    }
+
+    private static Vec3 getMuzzleOrigin(ServerLevel level, CannonMountBlockEntity mount) {
+        if (mount == null) {
+            return Vec3.ZERO;
+        }
+
+        var contraption = mount.getContraption();
+        if (contraption != null) {
+            return SableRadarCompat.projectToWorld(level, CBCMuzzleUtil.getCBCSpawnAnchorWorld(contraption));
+        }
+
+        return SableRadarCompat.projectToWorld(level, mount.getBlockPos().above(2).getCenter());
     }
 
     // Optional debug helper

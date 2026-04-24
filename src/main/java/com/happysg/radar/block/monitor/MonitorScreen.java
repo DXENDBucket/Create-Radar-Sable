@@ -5,6 +5,7 @@ import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.TrackCategory;
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -536,8 +537,8 @@ public class MonitorScreen extends Screen {
             }
         }
 
-        if (track.isSableSubLevel() && track.entityType() != null && !track.entityType().equals("sable:sub_level")) {
-            return track.entityType();
+        if (track.isSableSubLevel() || track.trackCategory() == TrackCategory.SABLE) {
+            return SableRadarCompat.getTrackDisplayName(mon.getLevel(), track);
         }
 
         return null;

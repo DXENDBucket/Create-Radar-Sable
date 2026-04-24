@@ -10,7 +10,6 @@ import com.happysg.radar.compat.cbc.*;
 import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
 import com.mojang.logging.LogUtils;
-import net.createmod.catnip.math.VecHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.server.level.ServerLevel;
@@ -201,7 +200,20 @@ public class WeaponFiringControl {
         if (poce == null)
             return SableRadarCompat.projectToWorld(level, cannonMount.getBlockPos().getCenter());
 
-        return SableRadarCompat.projectToWorld(level, poce.toGlobalVector(VecHelper.getCenterOf(BlockPos.ZERO), 1.0f));
+        return SableRadarCompat.projectToWorld(level, getCannonRayStartLocal());
+    }
+
+    private Vec3 getCannonRayStartLocal() {
+        if (cannonMount == null) {
+            return null;
+        }
+
+        PitchOrientedContraptionEntity poce = cannonMount.getContraption();
+        if (poce == null) {
+            return cannonMount.getBlockPos().getCenter();
+        }
+
+        return CBCMuzzleUtil.getCBCSpawnAnchorWorld(poce);
     }
 
 
@@ -446,10 +458,10 @@ public class WeaponFiringControl {
 
         int blocksHigh = (int) Math.ceil(height);
         Vec3 start = getCannonRayStart();
+        if (start == null) return false;
         if (isOutOfKnownRange(target)) return false;
         if (!isPointInShootableRange(target)) return false;
 
-        LOGGER.warn("LOS DBG: trackCat={} entityType={} height={} blocksHigh={} target={}", activetrack != null ? activetrack.trackCategory() : "null", activetrack != null ? activetrack.entityType() : "null", height, blocksHigh, target);
         for (int h = blocksHigh - 1; h >= 0; h--) {
             // center of each block, top-first
             Vec3 end = target.add(0, h + 0.5, 0);
@@ -471,6 +483,7 @@ public class WeaponFiringControl {
         if (max <= 0.0) return true;
 
         Vec3 start = getCannonRayStart();
+        if (start == null) return false;
         double dx = point.x - start.x;
         double dz = point.z - start.z;
         double horiz2 = dx * dx + dz * dz;
@@ -513,6 +526,7 @@ public class WeaponFiringControl {
         if (p == null) return false;
 
         Vec3 start = getCannonRayStart();
+        if (start == null) return false;
 
         if (level instanceof ServerLevel sl) {
             // If it looks like an entity track, REQUIRE entity resolution for LOS
@@ -636,6 +650,7 @@ public class WeaponFiringControl {
         if (max <= 0.0) return false;
 
         Vec3 start = getCannonRayStart();
+        if (start == null) return true;
         return point.distanceToSqr(start) > (max * max);
     }
 
@@ -687,6 +702,13 @@ public class WeaponFiringControl {
             cannonContraption = cannon;
         } else return;
         if (!(level instanceof ServerLevel serverLevel)) return;
+
+        if (!binoMode && isTrackStateTarget(activetrack)
+                && !SableRadarCompat.isTrackValid(serverLevel, activetrack)) {
+            LOGGER.warn("WFC: Sable target is no longer valid, stopping fire (trackId={})", activetrack.getId());
+            resetTarget();
+            return;
+        }
 
         if (targetEntity != null) {
             if (!targetEntity.isAlive()) {
@@ -812,13 +834,24 @@ public class WeaponFiringControl {
         Double desiredYaw = null;
 
         Vec3 origin = getCannonRayStart();
+        if (origin == null) {
+            stopFireCannon();
+            return;
+        }
+        Vec3 aimForAngles = offsetAim;
 
-        double dx = offsetAim.x - origin.x;
-        double dz = offsetAim.z - origin.z;
+        Vec3 localOrigin = getCannonRayStartLocal();
+        if (SableRadarCompat.isInSubLevel(level, localOrigin)) {
+            origin = localOrigin;
+            aimForAngles = SableRadarCompat.projectWorldToLocal(level, localOrigin, offsetAim);
+        }
+
+        double dx = aimForAngles.x - origin.x;
+        double dz = aimForAngles.z - origin.z;
         double yawDeg = Math.toDegrees(Math.atan2(dz, dx)) + 90.0;
         desiredYaw = yawDeg + 180.0;
 
-        List<Double> pitchRoots = CannonTargeting.calculatePitch(cannonMount, origin, offsetAim, serverLevel);
+        List<Double> pitchRoots = CannonTargeting.calculatePitch(cannonMount, origin, aimForAngles, serverLevel);
         if (pitchRoots != null && !pitchRoots.isEmpty()) desiredPitch = pitchRoots.get(0);
 
         if (desiredPitch != null && pitchController != null) {

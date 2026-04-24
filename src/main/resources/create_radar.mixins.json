@@ -11,6 +11,7 @@
     "AutoCannonAccessor",
     "CBATAutoCannonAccessor",
     "AutocannonProjectileAccessor",
+    "CBCUtilsMixin",
     "ShupapiumACContraptionAccessor"
   ],
   "injectors": {

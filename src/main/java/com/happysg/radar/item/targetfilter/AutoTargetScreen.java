@@ -20,6 +20,13 @@ import net.minecraft.world.item.ItemStack;
 public class AutoTargetScreen extends AbstractSimiScreen  {
     private static final String KEY = "TargetBools";
     private static final int COUNT = 7;
+    private static final Component PLAYER_TOOLTIP = Component.translatable(CreateRadar.MODID + ".radar_button.player");
+    private static final Component CONTRAPTION_TOOLTIP = Component.translatable(CreateRadar.MODID + ".radar_button.contraption");
+    private static final Component MOB_TOOLTIP = Component.translatable(CreateRadar.MODID + ".radar_button.hostile");
+    private static final Component ANIMAL_TOOLTIP = Component.translatable(CreateRadar.MODID + ".radar_button.animal");
+    private static final Component PROJECTILE_TOOLTIP = Component.translatable(CreateRadar.MODID + ".radar_button.projectile");
+    private static final Component LINE_OF_SIGHT_TOOLTIP = Component.translatable(CreateRadar.MODID + ".radar_button.lineofsight");
+    private static final Component AUTO_TARGET_TOOLTIP = Component.translatable(CreateRadar.MODID + ".radar_button.auto_target");
 
     boolean player =true;
     boolean contraption=true;
@@ -78,6 +85,34 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
 
     }
 
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        super.render(graphics, mouseX, mouseY, partialTicks);
+
+        Component tooltip = getHoveredTooltip(mouseX, mouseY);
+        if (tooltip != null) {
+            graphics.pose().pushPose();
+            graphics.pose().translate(0, 0, 400);
+            graphics.renderTooltip(font, tooltip, mouseX, mouseY);
+            graphics.pose().popPose();
+        }
+    }
+
+    private Component getHoveredTooltip(int mouseX, int mouseY) {
+        if (isHovered(playerButton, mouseX, mouseY)) return PLAYER_TOOLTIP;
+        if (isHovered(contraptionButton, mouseX, mouseY)) return CONTRAPTION_TOOLTIP;
+        if (isHovered(mobButton, mouseX, mouseY)) return MOB_TOOLTIP;
+        if (isHovered(animalButton, mouseX, mouseY)) return ANIMAL_TOOLTIP;
+        if (isHovered(projectileButton, mouseX, mouseY)) return PROJECTILE_TOOLTIP;
+        if (isHovered(lineofSightButton, mouseX, mouseY)) return LINE_OF_SIGHT_TOOLTIP;
+        if (isHovered(autoTargetButton, mouseX, mouseY)) return AUTO_TARGET_TOOLTIP;
+        return null;
+    }
+
+    private boolean isHovered(IconButton button, int mouseX, int mouseY) {
+        return button != null && button.isMouseOver(mouseX, mouseY);
+    }
+
 
     @Override
     protected void init() {
@@ -89,7 +124,6 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         int Y = guiTop;
         loadFlagsFromHeldItem();
         playerButton = new IconButton(guiLeft + 22, guiTop + 43, ModGuiTextures.PLAYER_BUTTON);
-        playerButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.player"));
         playerIndicator = new Indicator(guiLeft + 22, guiTop + 36, Component.empty());
         playerIndicator.state = player ? Indicator.State.GREEN : Indicator.State.RED;
         playerButton.withCallback((x, y) -> {
@@ -99,7 +133,6 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         addRenderableWidget(playerButton);
         addRenderableWidget(playerIndicator);
         contraptionButton = new IconButton(guiLeft + 42, guiTop + 43, ModGuiTextures.CONTRAPTION_TARGET_BUTTON);
-        contraptionButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.contraption"));
         contraptionIndicator = new Indicator(guiLeft + 42, guiTop + 36, Component.empty());
         contraptionIndicator.state = contraption ? Indicator.State.GREEN : Indicator.State.RED;
         contraptionButton.withCallback((x, y) -> {
@@ -110,7 +143,6 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         addRenderableWidget(contraptionIndicator);
 
         mobButton = new IconButton(guiLeft + 62, guiTop + 43, ModGuiTextures.MOB_BUTTON);
-        mobButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.hostile"));
         mobIndicator = new Indicator(guiLeft + 62, guiTop + 36, Component.empty());
         mobIndicator.state = mob ? Indicator.State.GREEN : Indicator.State.RED;
         mobButton.withCallback((x, y) -> {
@@ -121,7 +153,6 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         addRenderableWidget(mobIndicator);
 
         animalButton = new IconButton(guiLeft + 82, guiTop + 43, ModGuiTextures.ANIMAL_BUTTON);
-        animalButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.animal"));
         animalIndicator = new Indicator(guiLeft + 82, guiTop + 36, Component.empty());
         animalIndicator.state = animal ? Indicator.State.GREEN : Indicator.State.RED;
         animalButton.withCallback((x, y) -> {
@@ -132,7 +163,6 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         addRenderableWidget(animalIndicator);
 
         projectileButton = new IconButton(guiLeft + 102, guiTop + 43, ModGuiTextures.PROJECTILE_BUTTON);
-        projectileButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.projectile"));
         projectileIndicator = new Indicator(guiLeft + 102, guiTop + 36, Component.empty());
         projectileIndicator.state = projectile ? Indicator.State.GREEN : Indicator.State.RED;
         projectileButton.withCallback((x, y) -> {
@@ -143,7 +173,6 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         addRenderableWidget(projectileIndicator);
 
         lineofSightButton = new IconButton(guiLeft + 122, guiTop + 43, ModGuiTextures.LOS_BUTTON);
-        lineofSightButton.setToolTip(Component.translatable(CreateRadar.MODID +".radar_button.lineofsight"));
         lineofSightIndicator = new Indicator(guiLeft + 122, guiTop + 36,Component.empty());
         lineofSightIndicator.state = lineofSight ? Indicator.State.GREEN : Indicator.State.RED;
         lineofSightButton.withCallback((x,y) -> {
@@ -154,7 +183,6 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         addRenderableWidget(lineofSightIndicator);
 
         autoTargetButton = new IconButton(guiLeft + 170, guiTop + 42, ModGuiTextures.AUTO_TARGET);
-        autoTargetButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.auto_target"));
         autoTargetIndicator = new Indicator(guiLeft + 170, guiTop + 35, Component.empty());
         autoTargetIndicator.state = autoTarget ? Indicator.State.GREEN : Indicator.State.RED;
         autoTargetButton.withCallback((x, y) -> {

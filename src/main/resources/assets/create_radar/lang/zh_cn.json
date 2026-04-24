@@ -134,7 +134,7 @@
     "create_radar.radar_button.artillery_mode":  "火炮模式",
     "create_radar.radar_button.auto_fire":  "自动开火",
     "create_radar.radar_button.auto_target":  "自动锁定",
-    "create_radar.radar_button.contraption":  "Sable物理结构",
+    "create_radar.radar_button.contraption":  "动态/Sable结构",
     "create_radar.radar_button.hostile":  "敌对",
     "create_radar.radar_button.item":  "物品",
     "create_radar.radar_button.lineofsight":  "视线",

@@ -7,6 +7,7 @@ import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
+import com.simibubi.create.content.contraptions.ControlledContraptionEntity;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BehaviourType;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -48,6 +49,9 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     public RadarScanningBlockBehavior(SmartBlockEntity be) {
         super(be);
         this.bearingEntity = be;
+        if (be instanceof RadarBearingBlockEntity radarBearing) {
+            this.radarBearing = radarBearing;
+        }
     }
 
     public void applyDetectionConfig(DetectionConfig cfg) {
@@ -112,6 +116,7 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         removeDeadTracks();
         if (running) {
             updateScanPos();
+            pruneOwnRadarContraptionTrack();
             updateRadarTracks();
         }
         if (running) {
@@ -135,6 +140,10 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
 
 
         for (Entity entity : scannedEntities) {
+            if (isOwnRadarContraption(entity)) {
+                radarTracks.remove(entity.getUUID().toString());
+                continue;
+            }
             if (entity.isAlive() && isInFovAndRange(entity.position())) {
                 radarTracks.compute(entity.getUUID().toString(), (id, track) -> {
                     if (track == null) return new RadarTrack(entity);
@@ -146,6 +155,7 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
                     scannedProjectiles.add((Projectile) entity);
             }
         }
+        pruneOwnRadarContraptionTrack();
     }
 
     private void scanForSableTracks() {
@@ -218,6 +228,8 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     }
 
     private void removeDeadTracks() {
+        pruneOwnRadarContraptionTrack();
+
         // entities
         for (Entity entity : scannedEntities) {
             if (!entity.isAlive())
@@ -229,6 +241,12 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         assert blockEntity.getLevel() != null;
         long currentTime = blockEntity.getLevel().getGameTime();
         for (RadarTrack track : radarTracks.values()) {
+            if (track.isSableSubLevel()
+                    && blockEntity.getLevel() instanceof ServerLevel serverLevel
+                    && !SableRadarCompat.isTrackValid(serverLevel, track)) {
+                toRemove.add(track.id());
+                continue;
+            }
             if (currentTime - track.scannedTime() > trackExpiration)
                 toRemove.add(track.id());
         }
@@ -282,6 +300,29 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
                 }
             }
         }
+        pruneOwnRadarContraptionTrack();
+    }
+
+    private void pruneOwnRadarContraptionTrack() {
+        ControlledContraptionEntity ownContraption = getOwnRadarContraptionEntity();
+        if (ownContraption == null) {
+            return;
+        }
+
+        scannedEntities.removeIf(this::isOwnRadarContraption);
+        radarTracks.remove(ownContraption.getUUID().toString());
+    }
+
+    private boolean isOwnRadarContraption(Entity entity) {
+        ControlledContraptionEntity ownContraption = getOwnRadarContraptionEntity();
+        return ownContraption != null && entity.getUUID().equals(ownContraption.getUUID());
+    }
+
+    private ControlledContraptionEntity getOwnRadarContraptionEntity() {
+        if (radarBearing == null) {
+            return null;
+        }
+        return radarBearing.getMovedContraption();
     }
 
     private AABB getRadarAABB() {

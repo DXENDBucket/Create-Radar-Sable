@@ -5,6 +5,7 @@ import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
 import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
@@ -227,7 +228,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
         }
 
-        if (isFilteredOwnSableTarget(tTrack)) {
+        if (isFilteredOwnTarget(tTrack)) {
             track = null;
             if (firingControl != null) {
                 firingControl.resetTarget();
@@ -332,12 +333,15 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         if (!(level instanceof ServerLevel sl)) {
             return false;
         }
+        if (track.isSableSubLevel() && !SableRadarCompat.isTrackValid(sl, track)) {
+            return false;
+        }
 
         getFiringControl();
         if (firingControl == null) {
             return false;
         }
-        if (isFilteredOwnSableTarget(track)) {
+        if (isFilteredOwnTarget(track)) {
             return false;
         }
 
@@ -375,6 +379,23 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         }
 
         return SableRadarCompat.isTrackAtPosition(level, tTrack, probe);
+    }
+
+    private boolean isFilteredOwnTarget(@Nullable RadarTrack tTrack) {
+        return isFilteredOwnSableTarget(tTrack) || isOwnMountedContraptionTarget(tTrack);
+    }
+
+    private boolean isOwnMountedContraptionTarget(@Nullable RadarTrack tTrack) {
+        if (tTrack == null || tTrack.trackCategory() != TrackCategory.CONTRAPTION) {
+            return false;
+        }
+
+        Mount mount = resolveMount();
+        if (mount == null || mount.cbc.getContraption() == null) {
+            return false;
+        }
+
+        return tTrack.getId().equals(mount.cbc.getContraption().getUUID().toString());
     }
 
     @Nullable

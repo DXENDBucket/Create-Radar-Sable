@@ -1,10 +1,15 @@
 package com.happysg.radar.compat.sable;
 
 import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.block.radar.track.TrackCategory;
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Position;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -16,12 +21,14 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 
 public final class SableRadarCompat {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final String TRACK_ID_PREFIX = "sable:";
+    private static final double SABLE_VELOCITY_TO_TICKS = 1.0 / 20.0;
 
     private static boolean initialized;
     private static boolean available;
@@ -31,6 +38,7 @@ public final class SableRadarCompat {
     private static Object companion;
 
     private static Method getContainer;
+    private static Method getContainerForLevel;
     private static Method getAllSubLevels;
     private static Method projectOutOfSubLevel;
     private static Method getContaining;
@@ -61,6 +69,42 @@ public final class SableRadarCompat {
         }
 
         return position;
+    }
+
+    public static boolean isInSubLevel(Level level, Vec3 localPosition) {
+        if (level == null || localPosition == null || !isAvailable()) {
+            return false;
+        }
+
+        try {
+            return getContaining.invoke(companion, level, localPosition) != null;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    public static Vec3 projectWorldToLocal(Level level, Vec3 referenceLocalPosition, Vec3 worldPosition) {
+        if (level == null || referenceLocalPosition == null || worldPosition == null || !isAvailable()) {
+            return worldPosition;
+        }
+
+        try {
+            Object subLevel = getContaining.invoke(companion, level, referenceLocalPosition);
+            Object pose = subLevel == null ? null : invokeNoArg(subLevel, "logicalPose");
+            if (pose == null) {
+                return worldPosition;
+            }
+
+            Method inverse = pose.getClass().getMethod("transformPositionInverse", Vec3.class);
+            Object local = inverse.invoke(pose, worldPosition);
+            if (local instanceof Vec3 vec) {
+                return vec;
+            }
+        } catch (Throwable throwable) {
+            LOGGER.debug("Failed to project Sable world position {} into local space near {}", worldPosition, referenceLocalPosition, throwable);
+        }
+
+        return worldPosition;
     }
 
     public static Vec3 projectEntityPosition(Entity entity) {
@@ -170,6 +214,67 @@ public final class SableRadarCompat {
         return isTrackForSubLevel(track, subLevelId);
     }
 
+    public static boolean isTrackValid(ServerLevel level, @Nullable RadarTrack track) {
+        if (level == null || !isSableTrack(track) || !isAvailable()) {
+            return false;
+        }
+
+        UUID uuid = getTrackSubLevelUuid(track);
+        if (uuid == null) {
+            return false;
+        }
+
+        Object subLevel = getSubLevel(level, uuid);
+        return isTrackableSubLevel(subLevel);
+    }
+
+    public static List<ServerPlayer> getTrackingPlayers(ServerLevel level, BlockPos pos) {
+        if (level == null || pos == null || !isAvailable()) {
+            return List.of();
+        }
+
+        List<ServerPlayer> players = new ArrayList<>();
+
+        try {
+            Object container = getContainer.invoke(null, level);
+            if (container == null) {
+                return players;
+            }
+
+            Method getPlayersTracking = container.getClass().getMethod("getPlayersTracking", ChunkPos.class);
+            Object result = getPlayersTracking.invoke(container, new ChunkPos(pos));
+            if (result instanceof Iterable<?> iterable) {
+                for (Object value : iterable) {
+                    addTrackingPlayer(level, players, value);
+                }
+            }
+        } catch (Throwable throwable) {
+            LOGGER.debug("Failed to resolve Sable tracking players for {}", pos, throwable);
+        }
+
+        return players;
+    }
+
+    @Nullable
+    public static AABB getTrackWorldAabb(ServerLevel level, @Nullable RadarTrack track) {
+        if (level == null || !isSableTrack(track) || !isAvailable()) {
+            return null;
+        }
+
+        UUID uuid = getTrackSubLevelUuid(track);
+        if (uuid == null) {
+            return null;
+        }
+
+        Object subLevel = getSubLevel(level, uuid);
+        if (!isTrackableSubLevel(subLevel)) {
+            return null;
+        }
+
+        AABB rawBox = getSubLevelRawAabb(subLevel);
+        return rawBox == null ? null : projectAabbToWorld(level, rawBox);
+    }
+
     public static List<RadarTrack> collectSubLevelTracks(ServerLevel level, AABB scanBox, @Nullable String ignoredSubLevelId,
                                                          Predicate<Vec3> positionFilter, long scannedTime) {
         if (level == null || scanBox == null || !isAvailable()) {
@@ -234,7 +339,7 @@ public final class SableRadarCompat {
             }
 
             for (Object subLevel : subLevels) {
-                if (subLevel == null || isRemoved(subLevel)) {
+                if (!isTrackableSubLevel(subLevel)) {
                     continue;
                 }
 
@@ -292,9 +397,33 @@ public final class SableRadarCompat {
     }
 
     @Nullable
+    public static String getTrackDisplayName(Level level, @Nullable RadarTrack track) {
+        if (!isSableTrack(track)) {
+            return null;
+        }
+
+        String name = normalizeSubLevelName(track.entityType());
+        if (name != null) {
+            return name;
+        }
+
+        if (level == null || !isAvailable()) {
+            return null;
+        }
+
+        UUID uuid = getTrackSubLevelUuid(track);
+        if (uuid == null) {
+            return null;
+        }
+
+        Object subLevel = getSubLevel(level, uuid);
+        return subLevel == null ? null : normalizeSubLevelName(readSubLevelName(subLevel));
+    }
+
+    @Nullable
     private static RadarTrack createTrack(ServerLevel level, Object subLevel, AABB scanBox, @Nullable String ignoredSubLevelId,
                                           Predicate<Vec3> positionFilter, long scannedTime) {
-        if (subLevel == null || isRemoved(subLevel)) {
+        if (!isTrackableSubLevel(subLevel)) {
             return null;
         }
 
@@ -308,12 +437,13 @@ public final class SableRadarCompat {
             return null;
         }
 
-        Vec3 position = getSubLevelCenter(level, subLevel);
+        Vec3 rawPosition = getSubLevelCenter(subLevel);
+        Vec3 position = rawPosition == null ? null : projectToWorld(level, rawPosition);
         if (position == null || !scanBox.contains(position) || !positionFilter.test(position)) {
             return null;
         }
 
-        Vec3 velocity = getVelocity(level, position);
+        Vec3 velocity = getVelocity(level, rawPosition);
         float height = (float) Math.max(1.0, getSubLevelHeight(subLevel));
         String name = getSubLevelName(subLevel);
 
@@ -321,14 +451,14 @@ public final class SableRadarCompat {
     }
 
     @Nullable
-    private static Vec3 getSubLevelCenter(ServerLevel level, Object subLevel) {
+    private static Vec3 getSubLevelCenter(Object subLevel) {
         try {
             Object bounds = invokeNoArg(subLevel, "boundingBox");
             if (bounds != null) {
                 Object center = invokeNoArg(bounds, "center");
                 Vec3 vec = vectorToVec3(center);
                 if (vec != null) {
-                    return projectToWorld(level, vec);
+                    return vec;
                 }
             }
         } catch (Throwable ignored) {
@@ -337,8 +467,7 @@ public final class SableRadarCompat {
         try {
             Object pose = invokeNoArg(subLevel, "logicalPose");
             Object position = pose == null ? null : invokeNoArg(pose, "position");
-            Vec3 vec = vectorToVec3(position);
-            return vec == null ? null : projectToWorld(level, vec);
+            return vectorToVec3(position);
         } catch (Throwable throwable) {
             return null;
         }
@@ -348,7 +477,7 @@ public final class SableRadarCompat {
         try {
             Object velocity = getVelocityAt.invoke(companion, level, position);
             if (velocity instanceof Vec3 vec) {
-                return vec;
+                return vec.scale(SABLE_VELOCITY_TO_TICKS);
             }
         } catch (Throwable ignored) {
         }
@@ -390,7 +519,7 @@ public final class SableRadarCompat {
 
     @Nullable
     private static UUID getTrackSubLevelUuid(@Nullable RadarTrack track) {
-        if (track == null || !track.isSableSubLevel()) {
+        if (!isSableTrack(track)) {
             return null;
         }
 
@@ -411,9 +540,9 @@ public final class SableRadarCompat {
     }
 
     @Nullable
-    private static Object getSubLevel(ServerLevel level, UUID uuid) {
+    private static Object getSubLevel(Level level, UUID uuid) {
         try {
-            Object container = getContainer.invoke(null, level);
+            Object container = getContainerForLevel != null ? getContainerForLevel.invoke(null, level) : getContainer.invoke(null, level);
             if (container == null) {
                 return null;
             }
@@ -501,6 +630,19 @@ public final class SableRadarCompat {
                 && Double.compare(a.maxZ, b.maxZ) == 0;
     }
 
+    private static void addTrackingPlayer(ServerLevel level, List<ServerPlayer> players, Object value) {
+        ServerPlayer player = null;
+        if (value instanceof ServerPlayer serverPlayer) {
+            player = serverPlayer;
+        } else if (value instanceof UUID uuid) {
+            player = level.getServer().getPlayerList().getPlayer(uuid);
+        }
+
+        if (player != null && !players.contains(player)) {
+            players.add(player);
+        }
+    }
+
     private static double getSubLevelHeight(Object subLevel) {
         try {
             Object bounds = invokeNoArg(subLevel, "boundingBox");
@@ -523,6 +665,51 @@ public final class SableRadarCompat {
         }
     }
 
+    private static boolean isTrackableSubLevel(Object subLevel) {
+        if (subLevel == null || isRemoved(subLevel)) {
+            return false;
+        }
+
+        Boolean hasMass = hasPositiveMass(subLevel);
+        return hasMass == null || hasMass;
+    }
+
+    @Nullable
+    private static Boolean hasPositiveMass(Object subLevel) {
+        Object massData = null;
+        try {
+            massData = invokeNoArg(subLevel, "getMassTracker");
+        } catch (Throwable ignored) {
+        }
+        if (massData == null) {
+            try {
+                massData = invokeNoArg(subLevel, "getSelfMassTracker");
+            } catch (Throwable ignored) {
+            }
+        }
+        if (massData == null) {
+            return null;
+        }
+
+        try {
+            Object invalid = invokeNoArg(massData, "isInvalid");
+            if (invalid instanceof Boolean b && b) {
+                return false;
+            }
+        } catch (Throwable ignored) {
+        }
+
+        try {
+            Object mass = invokeNoArg(massData, "getMass");
+            if (mass instanceof Number number) {
+                return number.doubleValue() > 1.0E-6;
+            }
+        } catch (Throwable ignored) {
+        }
+
+        return null;
+    }
+
     @Nullable
     private static UUID getSubLevelUuid(Object subLevel) {
         try {
@@ -534,15 +721,55 @@ public final class SableRadarCompat {
     }
 
     private static String getSubLevelName(Object subLevel) {
-        try {
-            Object name = invokeNoArg(subLevel, "getName");
-            if (name instanceof String value && !value.isBlank()) {
-                return value;
+        String name = normalizeSubLevelName(readSubLevelName(subLevel));
+        return name == null ? "sable:sub_level" : name;
+    }
+
+    @Nullable
+    private static Object readSubLevelName(Object subLevel) {
+        String[] methods = {"getName", "getDisplayName", "getCustomName", "displayName", "customName", "name"};
+        for (String method : methods) {
+            try {
+                Object value = invokeNoArg(subLevel, method);
+                if (normalizeSubLevelName(value) != null) {
+                    return value;
+                }
+            } catch (Throwable ignored) {
             }
-        } catch (Throwable ignored) {
         }
 
-        return "sable:sub_level";
+        return null;
+    }
+
+    @Nullable
+    private static String normalizeSubLevelName(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        if (value instanceof Optional<?> optional) {
+            return optional.map(SableRadarCompat::normalizeSubLevelName).orElse(null);
+        }
+
+        String name = null;
+        if (value instanceof Component component) {
+            name = component.getString();
+        } else if (value instanceof CharSequence sequence) {
+            name = sequence.toString();
+        }
+
+        if (name == null) {
+            return null;
+        }
+
+        name = name.trim();
+        return name.isBlank() || "sable:sub_level".equals(name) ? null : name;
+    }
+
+    private static boolean isSableTrack(@Nullable RadarTrack track) {
+        return track != null && (track.isSableSubLevel()
+                || track.trackCategory() == TrackCategory.SABLE
+                || (track.getId() != null && track.getId().startsWith(TRACK_ID_PREFIX)));
     }
 
     @Nullable
@@ -585,6 +812,7 @@ public final class SableRadarCompat {
             companion = instance.get(null);
 
             getContainer = subLevelContainerClass.getMethod("getContainer", ServerLevel.class);
+            getContainerForLevel = subLevelContainerClass.getMethod("getContainer", Level.class);
             getAllSubLevels = subLevelContainerClass.getMethod("getAllSubLevels");
             projectOutOfSubLevel = companionClass.getMethod("projectOutOfSubLevel", Level.class, Vec3.class);
             getContaining = companionClass.getMethod("getContaining", Level.class, Position.class);

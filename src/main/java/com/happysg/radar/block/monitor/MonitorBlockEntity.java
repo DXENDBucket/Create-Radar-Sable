@@ -6,8 +6,10 @@ import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity;
 import com.happysg.radar.block.radar.behavior.IRadar;
+import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.RadarTrackUtil;
+import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.block.behavior.networks.config.AutoTargetingHelper;
 import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
@@ -34,6 +36,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
+import com.simibubi.create.content.contraptions.ControlledContraptionEntity;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -287,7 +290,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         DetectionConfig det = this.filter; // already synced from network (or legacy)
         cachedTracks = radar.getTracks().stream()
                 .filter(det::test)
-                .filter(track -> !isFilteredRadarSableTrack(radar, track))
+                .filter(track -> !isFilteredRadarSelfTrack(radar, track))
                 .toList();
 
         if (!level.isClientSide) {
@@ -298,7 +301,11 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         return getRadarCenterPos() != null;
     }
 
-    private boolean isFilteredRadarSableTrack(IRadar radar, @Nullable RadarTrack track) {
+    private boolean isFilteredRadarSelfTrack(IRadar radar, @Nullable RadarTrack track) {
+        if (isOwnRadarContraptionTrack(radar, track)) {
+            return true;
+        }
+
         if (level == null || track == null || !track.isSableSubLevel()) {
             return false;
         }
@@ -318,6 +325,18 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         }
 
         return radarPos != null && SableRadarCompat.isTrackAtPosition(level, track, radarPos.getCenter());
+    }
+
+    private boolean isOwnRadarContraptionTrack(IRadar radar, @Nullable RadarTrack track) {
+        if (track == null || track.trackCategory() != TrackCategory.CONTRAPTION) {
+            return false;
+        }
+        if (!(radar instanceof RadarBearingBlockEntity radarBearing)) {
+            return false;
+        }
+
+        ControlledContraptionEntity ownContraption = radarBearing.getMovedContraption();
+        return ownContraption != null && track.getId().equals(ownContraption.getUUID().toString());
     }
 
     @Nullable
