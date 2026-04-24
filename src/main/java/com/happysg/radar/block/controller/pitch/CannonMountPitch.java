@@ -71,6 +71,9 @@ public class CannonMountPitch {
         if (track == null) {
             return false;
         }
+        if (!track.isWeaponTargetable()) {
+            return false;
+        }
         if (controller.firingControl == null) {
             return false;
         }

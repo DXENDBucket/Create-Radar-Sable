@@ -29,6 +29,8 @@ public class RadarBearingPeripheral implements GenericPeripheral {
             map.put("id", track.id());
             map.put("scannedTime", track.scannedTime());
             map.put("entityType", track.entityType());
+            map.put("source", track.source());
+            map.put("weaponTargetable", track.weaponTargetable());
             tracks.add(map);
         }
         return tracks;

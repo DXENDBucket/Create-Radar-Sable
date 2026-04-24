@@ -577,6 +577,10 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
              return sp != null ? sp.getName().getString() : null;
         }
 
+        if (track.isSableSubLevel() && track.entityType() != null && !track.entityType().equals("sable:sub_level")) {
+            return track.entityType();
+        }
+
         return null;
     }
 

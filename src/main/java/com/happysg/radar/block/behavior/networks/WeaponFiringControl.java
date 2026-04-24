@@ -851,7 +851,7 @@ public class WeaponFiringControl {
     public void setTarget(Vec3 target, TargetingConfig config, RadarTrack track, WeaponNetworkData.WeaponGroupView view){
         LOGGER.warn("setTarget() 鈫?new target={} config={} atTick={}",
                 target, config, level != null ? level.getGameTime() : -1L);
-        if (target == null) {
+        if (target == null || (track != null && !track.isWeaponTargetable())) {
             this.target = null;
             this.activetrack = null;
             this.targetEntity = null;

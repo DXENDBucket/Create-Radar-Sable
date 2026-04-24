@@ -217,6 +217,14 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
         }
 
+        if (!tTrack.isWeaponTargetable()) {
+            track = null;
+            if (firingControl != null) {
+                firingControl.resetTarget();
+            }
+            return;
+        }
+
         if (tTrack != track) {
             track = tTrack;
         }

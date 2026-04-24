@@ -67,6 +67,9 @@ public final class AutoTargetingHelper {
         RadarTrack bestTrack = null;
 
         for (RadarTrack track : tracks) {
+            if (track == null || !track.isWeaponTargetable())
+                continue;
+
             if (!targetingConfig.test(track.trackCategory()))
                 continue;
 

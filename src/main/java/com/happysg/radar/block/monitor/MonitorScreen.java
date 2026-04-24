@@ -536,6 +536,10 @@ public class MonitorScreen extends Screen {
             }
         }
 
+        if (track.isSableSubLevel() && track.entityType() != null && !track.entityType().equals("sable:sub_level")) {
+            return track.entityType();
+        }
+
         return null;
     }
 }

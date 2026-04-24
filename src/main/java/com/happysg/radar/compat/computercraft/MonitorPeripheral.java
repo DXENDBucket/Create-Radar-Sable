@@ -40,6 +40,8 @@ public class MonitorPeripheral implements GenericPeripheral {
             map.put("id", track.id() == null ? "" : track.id());
             map.put("scannedTime", track.scannedTime());
             map.put("entityType", track.entityType() == null ? "" : track.entityType());
+            map.put("source", track.source() == null ? "" : track.source());
+            map.put("weaponTargetable", track.weaponTargetable());
             tracks.add(map);
         }
         return tracks;
@@ -74,6 +76,8 @@ public class MonitorPeripheral implements GenericPeripheral {
         map.put("id", selectedTrack.id() == null ? "" : selectedTrack.id());
         map.put("scannedTime", selectedTrack.scannedTime());
         map.put("entityType", selectedTrack.entityType() == null ? "" : selectedTrack.entityType());
+        map.put("source", selectedTrack.source() == null ? "" : selectedTrack.source());
+        map.put("weaponTargetable", selectedTrack.weaponTargetable());
         return map;
     }
 

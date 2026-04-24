@@ -240,6 +240,7 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     private boolean anyCannonCanEngage(ServerLevel sl, RadarTrack track, boolean requireLos) {
         Vec3 target = track != null ? track.position() : null;
         if (target == null) return false;
+        if (!track.isWeaponTargetable()) return false;
 
         for (AutoPitchControllerBlockEntity pitch : getWeaponEndpointsCached(sl)) {
             pitch.getFiringControl();
@@ -261,10 +262,11 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     private void pushToEndpoints(@Nullable RadarTrack track) {
         TargetingConfig cfg = targeting != null ? targeting : TargetingConfig.DEFAULT;
         this.activeTrackCache = track;
+        RadarTrack endpointTrack = track != null && track.isWeaponTargetable() ? track : null;
         List<AutoPitchControllerBlockEntity> entities = (level instanceof ServerLevel sl) ? getWeaponEndpointsCached(sl) : List.of();
         for (AutoPitchControllerBlockEntity pitch : entities) {
 
-            pitch.setAndAcquireTrack(track, cfg);
+            pitch.setAndAcquireTrack(endpointTrack, cfg);
             pitch.setSafeZones(safeZones);
         }
     }
@@ -500,6 +502,7 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         ArrayList<RadarTrack> candidates = new ArrayList<>();
         for (RadarTrack track : tracks) {
             if (track == null) continue;
+            if (!track.isWeaponTargetable()) continue;
 
             if (!cfg.test(track.trackCategory())) continue;
 

@@ -4,6 +4,7 @@ import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.TrackCategory;
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
@@ -13,6 +14,7 @@ import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -107,19 +109,26 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
             return;
         if(blockEntity.getLevel().getGameTime() %5!=1)return;
         removeDeadTracks();
-        if (running)
+        if (running) {
+            updateScanPos();
             updateRadarTracks();
+        }
         if (running) {
             scannedEntities.clear();
             scannedProjectiles.clear();
 
             scanForEntityTracks();
+            scanForSableTracks();
         }
     }
 
+    private void updateScanPos() {
+        Level level = blockEntity.getLevel();
+        Vec3 localPos = bearingEntity.getBlockPos().getCenter();
+        scanPos = level == null ? localPos : SableRadarCompat.projectToWorld(level, localPos);
+    }
 
     private void updateRadarTracks() {
-        scanPos = bearingEntity.getBlockPos().getCenter();
         Level level = blockEntity.getLevel();
         if (level == null )return;
 
@@ -135,6 +144,30 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
                 if (entity instanceof Projectile)
                     scannedProjectiles.add((Projectile) entity);
             }
+        }
+    }
+
+    private void scanForSableTracks() {
+        if (!scanContraptions) {
+            return;
+        }
+
+        Level level = blockEntity.getLevel();
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        String ownSubLevelId = SableRadarCompat.getContainingSubLevelId(level, bearingEntity.getBlockPos().getCenter());
+        List<RadarTrack> sableTracks = SableRadarCompat.collectSubLevelTracks(
+                serverLevel,
+                getRadarAABB(),
+                ownSubLevelId,
+                this::isInFovAndRange,
+                level.getGameTime()
+        );
+
+        for (RadarTrack track : sableTracks) {
+            radarTracks.put(track.id(), track);
         }
     }
 
@@ -217,10 +250,10 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     }
 
     private AABB getRadarAABB() {
-        BlockPos radarPos = blockEntity.getBlockPos();
-        double x = radarPos.getX() + 0.5;
-        double y = radarPos.getY() + 0.5;
-        double z = radarPos.getZ() + 0.5;
+        Vec3 radarPos = scanPos == null ? blockEntity.getBlockPos().getCenter() : scanPos;
+        double x = radarPos.x;
+        double y = radarPos.y;
+        double z = radarPos.z;
 
         double yScan = RadarConfig.server().radarYScanRange.get();
         Level level = blockEntity.getLevel();

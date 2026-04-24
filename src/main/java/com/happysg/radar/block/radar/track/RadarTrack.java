@@ -1,8 +1,6 @@
 package com.happysg.radar.block.radar.track;
 
 import com.happysg.radar.block.monitor.MonitorSprite;
-import com.happysg.radar.compat.cbc.CannonLead;
-import com.happysg.radar.compat.cbc.VelocityTracker;
 import com.happysg.radar.config.RadarConfig;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.nbt.CompoundTag;
@@ -10,6 +8,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 
 public class RadarTrack {
+    public static final String SOURCE_ENTITY = "entity";
+    public static final String SOURCE_SABLE = "sable";
+
     private final String id;
     private Vec3 position;
     private Vec3 velocity;
@@ -17,10 +18,15 @@ public class RadarTrack {
     private final TrackCategory trackCategory;
     private final String entityType;
     private final float entityheight;
-
-    private Vec3 vector;
+    private final String source;
+    private final boolean weaponTargetable;
 
     public RadarTrack(String id, Vec3 position, Vec3 velocity, long scannedTime, TrackCategory trackCategory, String entityType, float entityheight) {
+        this(id, position, velocity, scannedTime, trackCategory, entityType, entityheight, SOURCE_ENTITY, true);
+    }
+
+    public RadarTrack(String id, Vec3 position, Vec3 velocity, long scannedTime, TrackCategory trackCategory, String entityType, float entityheight,
+                      String source, boolean weaponTargetable) {
         this.id = id;
         this.position = position;
         this.velocity = velocity;
@@ -28,12 +34,18 @@ public class RadarTrack {
         this.trackCategory = trackCategory;
         this.entityType = entityType;
         this.entityheight = entityheight;
-
+        this.source = source == null || source.isBlank() ? SOURCE_ENTITY : source;
+        this.weaponTargetable = weaponTargetable;
     }
 
     public RadarTrack(Entity entity) {
         this(entity.getUUID().toString(), entity.position(), entity.getDeltaMovement(), entity.level().getGameTime(),
                 TrackCategory.get(entity), entity.getType().toString(), entity.getBbHeight());
+    }
+
+    public static RadarTrack sableSubLevel(String id, Vec3 position, Vec3 velocity, long scannedTime, String displayName, float height) {
+        String entityType = displayName == null || displayName.isBlank() ? "sable:sub_level" : displayName;
+        return new RadarTrack(id, position, velocity, scannedTime, TrackCategory.CONTRAPTION, entityType, height, SOURCE_SABLE, false);
     }
 
     public Color getColor() {
@@ -65,8 +77,9 @@ public class RadarTrack {
                 tag.getLong("scannedTime"),
                 TrackCategory.values()[tag.getInt("Category")],
                 tag.getString("entityType"),
-                tag.getFloat("eh")
-
+                tag.getFloat("eh"),
+                tag.contains("source") ? tag.getString("source") : SOURCE_ENTITY,
+                !tag.contains("weaponTargetable") || tag.getBoolean("weaponTargetable")
         );
     }
 
@@ -84,6 +97,8 @@ public class RadarTrack {
         tag.putInt("Category", trackCategory.ordinal());
         tag.putString("entityType", entityType);
         tag.putFloat("eh", entityheight );
+        tag.putString("source", source);
+        tag.putBoolean("weaponTargetable", weaponTargetable);
 
         return tag;
     }
@@ -132,6 +147,18 @@ public class RadarTrack {
         return entityType;
     }
 
+    public String getSource() {
+        return source;
+    }
+
+    public boolean isWeaponTargetable() {
+        return weaponTargetable;
+    }
+
+    public boolean isSableSubLevel() {
+        return SOURCE_SABLE.equals(source);
+    }
+
 
 
     // This is a bit of a jank quick fix, since ive migrated from a record.
@@ -152,5 +179,11 @@ public class RadarTrack {
     }
     public String entityType() {
         return getEntityType();
+    }
+    public String source() {
+        return getSource();
+    }
+    public boolean weaponTargetable() {
+        return isWeaponTargetable();
     }
 }
