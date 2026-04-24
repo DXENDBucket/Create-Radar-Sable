@@ -4,8 +4,6 @@ import com.happysg.radar.CreateRadar;
 import com.happysg.radar.config.client.RadarClientConfig;
 import com.happysg.radar.config.server.RadarServerConfig;
 import net.createmod.catnip.config.ConfigBase;
-import net.createmod.catnip.config.ui.BaseConfigScreen;
-import net.minecraft.client.gui.screens.Screen;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.config.ModConfig;
@@ -75,12 +73,4 @@ public class RadarConfig {
                 config.onReload();
     }
 
-    public static BaseConfigScreen createConfigScreen(ModContainer container, Screen parent) {
-        BaseConfigScreen.setDefaultActionFor(CreateRadar.MODID, (base) -> base
-                .withSpecs(RadarConfig.client().specification,
-                        null,
-                        RadarConfig.server().specification));
-
-        return new BaseConfigScreen(parent, CreateRadar.MODID);
-    }
 }

@@ -2,12 +2,14 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.happysg.radar.mixin",
+  "plugin": "com.happysg.radar.mixin.CreateRadarMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "client": [
   ],
   "mixins": [
     "AbstractCannonAccessor",
     "AutoCannonAccessor",
+    "CBATAutoCannonAccessor",
     "AutocannonProjectileAccessor",
     "ShupapiumACContraptionAccessor"
   ],

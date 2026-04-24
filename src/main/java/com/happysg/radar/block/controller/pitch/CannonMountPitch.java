@@ -81,7 +81,7 @@ public class CannonMountPitch {
             return false;
         }
 
-        Vec3 p = track.position();
+        Vec3 p = controller.firingControl.getPreferredAimPoint(track, requireLos);
         if (p == null) {
             return false;
         }

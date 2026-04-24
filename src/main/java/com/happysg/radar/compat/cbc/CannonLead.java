@@ -1,11 +1,14 @@
 package com.happysg.radar.compat.cbc;
 
 import com.mojang.logging.LogUtils;
+import net.createmod.catnip.math.VecHelper;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
+import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 import rbasamoyai.createbigcannons.munitions.config.components.BallisticPropertiesComponent;
 
 import java.util.List;
@@ -65,6 +68,19 @@ public class CannonLead {
                 Math.sin(pitchRad),
                 Math.cos(pitchRad) * Math.sin(yawRad)
         ).normalize();
+    }
+
+    private static Vec3 getCannonRayStart(CannonMountBlockEntity mount) {
+        if (mount == null) {
+            return null;
+        }
+
+        PitchOrientedContraptionEntity contraption = mount.getContraption();
+        if (contraption == null) {
+            return mount.getBlockPos().getCenter();
+        }
+
+        return contraption.toGlobalVector(VecHelper.getCenterOf(BlockPos.ZERO), 1.0f);
     }
 
     // -------------------------
@@ -158,7 +174,8 @@ public class CannonLead {
         double muzzleSpeedPerTick = CannonUtil.getInitialVelocity(cannon, level);
         if (muzzleSpeedPerTick <= 0.0) return null;
 
-        Vec3 originNow = mount.getControllerBlockPos().above(2).getCenter();
+        Vec3 originNow = getCannonRayStart(mount);
+        if (originNow == null) return null;
         final double latencyTicks = 2.0; // tune 1..3
         int barrelLength = CannonUtil.getBarrelLength(cannon);
 
@@ -283,7 +300,8 @@ public class CannonLead {
         }
 
 
-        Vec3 originNow = mount.getControllerBlockPos().above(2).getCenter();
+        Vec3 originNow = getCannonRayStart(mount);
+        if (originNow == null) return null;
         int barrelLength = CannonUtil.getBarrelLength(cannon);
 
         BallisticPropertiesComponent bp = CannonUtil.getBallistics(cannon, level);

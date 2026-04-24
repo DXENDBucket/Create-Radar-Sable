@@ -130,7 +130,9 @@ dependencies {
     // CC:Tweaked
     compileOnly("cc.tweaked:cc-tweaked-${minecraft_version}-core-api:${cc_tweaked_version}")
     compileOnly("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_tweaked_version}")
-    runtimeOnly("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_tweaked_version}")
+    if (providers.gradleProperty("withComputerCraft").map { it.toBoolean() }.getOrElse(false)) {
+        runtimeOnly("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_tweaked_version}")
+    }
 
     annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
 }

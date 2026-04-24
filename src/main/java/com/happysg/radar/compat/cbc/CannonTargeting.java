@@ -28,10 +28,26 @@ public class CannonTargeting {
     }
 
     public static double calculateProjectileYatX(double speed, double dX, double thetaRad, double drag, double g) {
-        double l = log(1 - (drag * dX) / (speed * Math.cos(thetaRad)));
+        double cos = Math.cos(thetaRad);
+        if (Math.abs(cos) < 1.0e-6) {
+            return NaN;
+        }
+
+        if (Math.abs(drag) < 1.0e-6) {
+            double cos2 = cos * cos;
+            return dX * Math.tan(thetaRad)
+                    - (g * dX * dX) / (2.0 * speed * speed * cos2);
+        }
+
+        double logArg = 1 - (drag * dX) / (speed * cos);
+        if (logArg <= 0.0) {
+            return NaN;
+        }
+
+        double l = log(logArg);
         if (Double.isInfinite(l)) l = NaN;
         return dX * Math.tan(thetaRad)
-                + (dX * g) / (drag * speed * Math.cos(thetaRad))
+                + (dX * g) / (drag * speed * cos)
                 + g * l / (drag * drag);
     }
 
@@ -51,9 +67,9 @@ public class CannonTargeting {
         }
 
         float speed = CannonUtil.getInitialVelocity(cannon, level);
-        double drag = CannonUtil.getProjectileDrag(cannon, level);
+        double drag = Math.max(0.0, CannonUtil.getProjectileDrag(cannon, level));
         double gravity = CannonUtil.getProjectileGravity(cannon, level);
-        if (speed <= 0) return directPitchToTarget(originPos, targetPos);
+        if (!Double.isFinite(speed) || speed <= 0) return directPitchToTarget(originPos, targetPos);
 
         double dX = Math.hypot(targetPos.x - originPos.x, targetPos.z - originPos.z);
         double dY = targetPos.y - originPos.y;
@@ -70,13 +86,16 @@ public class CannonTargeting {
         double start = -90, end = 90, step = 1.0;
         List<Double> roots = new ArrayList<>();
 
-        double prevValue = diffFunction.value(start);
+        double prevValue = NaN;
         double prevTheta = start;
 
         for (double theta = start + step; theta <= end; theta += step) {
             double currValue = diffFunction.value(theta);
+            if (!Double.isFinite(currValue)) {
+                continue;
+            }
 
-            if (prevValue * currValue < 0) {
+            if (Double.isFinite(prevValue) && prevValue * currValue < 0) {
                 try {
                     double root = solver.solve(1000, diffFunction, prevTheta, theta);
                     roots.add(root);
@@ -85,8 +104,8 @@ public class CannonTargeting {
                 }
             }
 
-            prevTheta = Double.isNaN(currValue) ? prevTheta : theta;
-            prevValue = Double.isNaN(currValue) ? prevValue : currValue;
+            prevTheta = theta;
+            prevValue = currValue;
         }
 
         return roots.isEmpty() ? null : roots;

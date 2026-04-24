@@ -5,6 +5,7 @@ import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlock
 import com.happysg.radar.block.monitor.MonitorInputHandler;
 import com.happysg.radar.compat.cbcwpf.CBCWPFCompatRegister;
 import com.happysg.radar.compat.computercraft.CCCompatRegister;
+import com.happysg.radar.config.RadarConfigScreens;
 import com.happysg.radar.ponder.RadarPonderPlugin;
 import com.happysg.radar.registry.ModCommands;
 
@@ -31,8 +32,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
@@ -44,6 +45,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
+import net.neoforged.fml.loading.FMLEnvironment;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -86,9 +88,8 @@ public class CreateRadar {
         modEventBus.addListener(CreateRadar::onLoadComplete);
         modEventBus.addListener(NetworkFiltererBlockEntity::registerCapabilities);
 
-        container.registerExtensionPoint(IConfigScreenFactory.class, RadarConfig::createConfigScreen);
-
-        NeoForge.EVENT_BUS.addListener(CreateRadar::clientTick);
+        if (FMLEnvironment.dist == Dist.CLIENT)
+            RadarConfigScreens.register(container);
         ModSounds.register(modEventBus);
 
         // Compat modules
@@ -125,6 +126,7 @@ public class CreateRadar {
     public static void clientInit(final FMLClientSetupEvent event) {
         PonderIndex.addPlugin(new RadarPonderPlugin());
         NeoForge.EVENT_BUS.addListener(MonitorInputHandler::monitorPlayerHovering);
+        NeoForge.EVENT_BUS.addListener(CreateRadar::clientTick);
     }
 
     public static void register(final RegisterEvent event) {

@@ -5,7 +5,6 @@ import com.happysg.radar.block.controller.firing.FireControllerBlockEntity;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
-import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.compat.cbc.*;
 import com.happysg.radar.config.RadarConfig;
 import com.mojang.logging.LogUtils;
@@ -111,6 +110,17 @@ public class WeaponFiringControl {
                 bb.minY + (bb.maxY - bb.minY) * fy,
                 bb.minZ + (bb.maxZ - bb.minZ) * fz
         );
+    }
+
+    private static Vec3 entityAimCenter(Entity entity) {
+        return entity.position().add(0, Math.max(0.1, entity.getBbHeight() * 0.5), 0);
+    }
+
+    private static boolean isEntityTrack(RadarTrack track) {
+        return switch (track.trackCategory()) {
+            case PLAYER, HOSTILE, ANIMAL, PROJECTILE, CONTRAPTION, MOB, ITEM -> true;
+            default -> false;
+        };
     }
 
     private static void worldToFrac(AABB bb, Vec3 p, VisCache c) {
@@ -250,6 +260,50 @@ public class WeaponFiringControl {
             case 'y' -> new Vec3(u, planeVal + eps, v);
             default -> new Vec3(u, v, planeVal + eps); // 'z'
         };
+    }
+
+    @Nullable
+    public Vec3 getPreferredAimPoint(@Nullable RadarTrack track, boolean requireLos) {
+        if (track == null || track.position() == null) {
+            return null;
+        }
+
+        if (level instanceof ServerLevel sl) {
+            Entity entity = null;
+            try {
+                entity = sl.getEntity(UUID.fromString(track.getId()));
+            } catch (Throwable ignored) {
+            }
+
+            if (entity != null && entity.isAlive()) {
+                return requireLos ? getCachedVisiblePoint(entity) : entityAimCenter(entity);
+            }
+
+            if (isEntityTrack(track)) {
+                return null;
+            }
+        }
+
+        Vec3 base = track.position();
+        Vec3 center = base.add(0, Math.max(0.25, track.getEnityHeight() * 0.5), 0);
+        if (!requireLos) {
+            return center;
+        }
+
+        Vec3 start = getCannonRayStart();
+        if (start == null) {
+            return null;
+        }
+
+        int blocksHigh = Math.max(1, (int) Math.ceil(track.getEnityHeight()));
+        for (int h = blocksHigh - 1; h >= 0; h--) {
+            Vec3 end = base.add(0, h + 0.5, 0);
+            if (isPointInShootableRange(end) && !isOutOfKnownRange(end) && rayClear(start, end).isClear()) {
+                return end;
+            }
+        }
+
+        return null;
     }
 
 
@@ -477,14 +531,14 @@ public class WeaponFiringControl {
     // LOS query for network controller
     public boolean hasLineOfSightTo(@Nullable RadarTrack track, boolean requireLos) {
         if (!isMountStateOk()) return false;
-        if (!requireLos) return true;
 
         if (track == null) return false;
 
-        Vec3 p = track.position();
+        Vec3 p = getPreferredAimPoint(track, requireLos);
         if (p == null) return false;
 
         if (!isPointInShootableRange(p)) return false;
+        if (!requireLos) return true;
 
         long now = level.getGameTime();
         String key = track.getId();
@@ -494,7 +548,7 @@ public class WeaponFiringControl {
             return c.ok;
         }
 
-        boolean ok = computeLosToTrack(track);
+        boolean ok = p != null;
         if (c == null) c = new LosCache();
         c.ok = ok;
         c.tick = now;
@@ -511,13 +565,6 @@ public class WeaponFiringControl {
         Vec3 start = getCannonRayStart();
 
         if (level instanceof ServerLevel sl) {
-            // If it looks like an entity track, REQUIRE entity resolution for LOS
-            boolean shouldBeEntity =
-                    track.trackCategory() == TrackCategory.PLAYER ||
-                            track.trackCategory() == TrackCategory.HOSTILE ||
-                            track.trackCategory() == TrackCategory.ANIMAL ||
-                            track.trackCategory() == TrackCategory.PROJECTILE;
-
             Entity e = null;
             try {
                 UUID uuid = UUID.fromString(track.getId());
@@ -528,7 +575,7 @@ public class WeaponFiringControl {
                 return getCachedVisiblePoint(e) != null;
             }
 
-            if (shouldBeEntity) {
+            if (isEntityTrack(track)) {
                 return false;
             }
         }
@@ -673,17 +720,6 @@ public class WeaponFiringControl {
             return;
         }
 
-        if (!binoMode) {
-            if (targetEntity != null) {
-                target = targetEntity.position();
-            }
-        }else {
-            target = binoTargetPos.getCenter();
-        }
-
-
-
-
         AbstractMountedCannonContraption cannonContraption;
         if (cannonMount.getContraption() == null) return;
         if (cannonMount.getContraption().getContraption() instanceof AbstractMountedCannonContraption cannon) {
@@ -705,34 +741,37 @@ public class WeaponFiringControl {
         boolean lag;
         shooterVel = Vec3.ZERO;
         shooterAccel = Vec3.ZERO;
+        Vec3 solvePos;
         if(!binoMode && targetEntity != null){
             target = targetEntity.position();
             targetVel = VelocityTracker.getEstimatedVelocityPerTick(targetEntity);
             targetAccel = AccelerationTracker.getAccelerationPerTick2(targetEntity.getUUID(),targetVel);
+            solvePos = targetingConfig.lineOfSight() ? getCachedVisiblePoint(targetEntity) : entityAimCenter(targetEntity);
+            if (solvePos == null) {
+                LOGGER.warn("WFC: no visible aim point, stopping fire (id={})", targetEntity.getUUID());
+                stopFireCannon();
+                return;
+            }
         }else if(binoMode && binoTargetPos != null){
 
             target = binoTargetPos.getCenter();
             targetVel = Vec3.ZERO;
             targetAccel = Vec3.ZERO;
+            solvePos = target;
         }else{
             return;
         }
-        double dist = getCannonRayStart().distanceTo(target);
+
+        offset = target != null ? (float) (solvePos.y - target.y) : 0f;
+        if (!isPointInShootableRange(solvePos)) {
+            LOGGER.warn("WFC: aim point out of shootable range, stopping fire (target={} aim={})", target, solvePos);
+            stopFireCannon();
+            return;
+        }
+
+        double dist = getCannonRayStart().distanceTo(solvePos);
         double noLeadDist = 1; // tune this
 
-        Vec3 solvePos = target;
-
-        if (!binoMode && targetEntity != null) {
-           // Vec3 vis = checkLineOfSight(targetEntity);
-
-            if (!checkLineOfSight(targetEntity.position())) {
-                LOGGER.warn("WFC: LOS blocked to entity, stopping fire (id={})", targetEntity.getUUID());
-                stopFireCannon();
-                return;
-            }
-
-            solvePos = targetEntity.position();
-        }
         double maxSpeed = 0.01; // 5 m/s in blocks/tick
         double maxSpeedSqr = maxSpeed * maxSpeed;
 

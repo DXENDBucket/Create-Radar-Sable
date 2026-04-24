@@ -46,6 +46,7 @@ public class MonitorScreen extends Screen {
     private static final int PANEL_TEXTURE_SIZE = 48;
     private static final int RADAR_TEXTURE_SIZE = 128;
     private static final int TRACK_TEXTURE_SIZE = 256;
+    private static final int TRACK_MARKER_SOURCE_PX = 16;
     private static final int TRACK_MARKER_BASE_PX = 18;
     private static final float SCREEN_SIZE_FRACTION = 0.68f;
     private static final int MIN_UI_SIZE = 220;
@@ -103,34 +104,29 @@ public class MonitorScreen extends Screen {
         MonitorBlockEntity monitor = getController();
         if (monitor == null) {
             gg.drawCenteredString(font, Component.translatable(NO_MONITOR_KEY), width / 2, height / 2 - 4, 0xFFFFFF);
-            super.render(gg, mouseX, mouseY, partialTicks);
             return;
         }
 
         if (!monitor.isLinked() || !monitor.isController()) {
             gg.drawCenteredString(font, Component.translatable(NOT_LINKED_CONTROLLER_KEY), width / 2, height / 2 - 4, 0xFFFFFF);
-            super.render(gg, mouseX, mouseY, partialTicks);
             return;
         }
 
         IRadar radar = monitor.getRadar().orElse(null);
         if (radar == null || !radar.isRunning()) {
             gg.drawCenteredString(font, Component.translatable(OFFLINE_KEY), width / 2, height / 2 - 4, 0xFFFFFF);
-            super.render(gg, mouseX, mouseY, partialTicks);
             return;
         }
 
         updateHoverFromMouse(monitor, radar, mouseX, mouseY);
 
-        renderGrid(gg, monitor, monitor.radar);
+        renderGrid(gg, monitor, radar);
         renderBG(gg, monitor, MonitorSprite.RADAR_BG_FILLER, ALPHA_BACKGROUND);
         renderBG(gg, monitor, MonitorSprite.RADAR_BG_CIRCLE, ALPHA_BACKGROUND);
         renderSweep(gg, monitor, radar, partialTicks);
         renderTracks(gg, monitor, radar);
 
         gg.drawCenteredString(font, Component.translatable(CLICK_HINT_KEY), width / 2, top + uiSize + 6, 0xA0A0A0);
-
-        super.render(gg, mouseX, mouseY, partialTicks);
     }
 
     private void drawPanelBackground(GuiGraphics gg) {
@@ -327,18 +323,15 @@ public class MonitorScreen extends Screen {
 
             RenderSystem.enableBlend();
             gg.setColor(c.getRedAsFloat(), c.getGreenAsFloat(), c.getBlueAsFloat(), alpha);
-            blitScaledTexture(gg, track.getSprite().getTexture(), sx, sy, spriteSize, spriteSize,
-                    TRACK_TEXTURE_SIZE, TRACK_TEXTURE_SIZE);
+            blitTrackMarker(gg, track.getSprite().getTexture(), sx, sy, spriteSize, spriteSize);
 
             if (track.id().equals(hoveredId)) {
                 gg.setColor(1f, 1f, 0f, alpha);
-                blitScaledTexture(gg, MonitorSprite.TARGET_HOVERED.getTexture(), sx, sy, spriteSize, spriteSize,
-                        TRACK_TEXTURE_SIZE, TRACK_TEXTURE_SIZE);
+                blitTrackMarker(gg, MonitorSprite.TARGET_HOVERED.getTexture(), sx, sy, spriteSize, spriteSize);
             }
             if (track.id().equals(monitor.selectedEntity)) {
                 gg.setColor(1f, 0f, 0f, alpha);
-                blitScaledTexture(gg, MonitorSprite.TARGET_SELECTED.getTexture(), sx, sy, spriteSize, spriteSize,
-                        TRACK_TEXTURE_SIZE, TRACK_TEXTURE_SIZE);
+                blitTrackMarker(gg, MonitorSprite.TARGET_SELECTED.getTexture(), sx, sy, spriteSize, spriteSize);
             }
 
             gg.setColor(1f, 1f, 1f, 1f);
@@ -467,19 +460,21 @@ public class MonitorScreen extends Screen {
     }
 
     private int getTrackMarkerSize() {
-        return Math.max(10, Math.round(TRACK_MARKER_BASE_PX * uiScale));
+        return Math.max(16, Math.round(TRACK_MARKER_BASE_PX * uiScale));
+    }
+
+    private void blitTrackMarker(GuiGraphics gg, ResourceLocation texture, int x, int y, int drawWidth, int drawHeight) {
+        Minecraft.getInstance().getTextureManager().getTexture(texture).setFilter(false, false);
+        int source = TRACK_MARKER_SOURCE_PX;
+        float uv = (TRACK_TEXTURE_SIZE - source) * 0.5f;
+        gg.blit(texture, x, y, drawWidth, drawHeight, uv, uv, source, source, TRACK_TEXTURE_SIZE, TRACK_TEXTURE_SIZE);
     }
 
     private void blitScaledTexture(GuiGraphics gg, ResourceLocation texture,
                                    int x, int y, int drawWidth, int drawHeight,
                                    int textureWidth, int textureHeight) {
         Minecraft.getInstance().getTextureManager().getTexture(texture).setFilter(false, false);
-        var pose = gg.pose();
-        pose.pushPose();
-        pose.translate(x, y, 0);
-        pose.scale(drawWidth / (float) textureWidth, drawHeight / (float) textureHeight, 1f);
-        gg.blit(texture, 0, 0, 0, 0, textureWidth, textureHeight, textureWidth, textureHeight);
-        pose.popPose();
+        gg.blit(texture, x, y, drawWidth, drawHeight, 0f, 0f, textureWidth, textureHeight, textureWidth, textureHeight);
     }
 
     private MonitorBlockEntity getController() {
