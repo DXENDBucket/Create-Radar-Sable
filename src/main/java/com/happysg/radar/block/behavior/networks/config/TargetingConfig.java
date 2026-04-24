@@ -51,7 +51,7 @@ public record TargetingConfig(boolean player, boolean contraption, boolean mob, 
     public boolean test(TrackCategory trackCategory) {
         return switch (trackCategory) {
             case PLAYER -> player;
-            case CONTRAPTION -> contraption;
+            case CONTRAPTION, SABLE -> contraption;
             case HOSTILE -> mob;
             case ANIMAL -> animal;
             case PROJECTILE -> projectile;

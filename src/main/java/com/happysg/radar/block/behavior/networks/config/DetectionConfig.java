@@ -65,7 +65,7 @@ public record DetectionConfig(boolean player, boolean contraption, boolean mob, 
     private boolean test(TrackCategory trackCategory) {
         if (trackCategory == TrackCategory.PLAYER) {
             return player;
-        } else if (trackCategory == TrackCategory.CONTRAPTION) {
+        } else if (trackCategory == TrackCategory.CONTRAPTION || trackCategory == TrackCategory.SABLE) {
             return contraption;
         } else if (trackCategory == TrackCategory.MOB || trackCategory == TrackCategory.HOSTILE) {
             return mob;

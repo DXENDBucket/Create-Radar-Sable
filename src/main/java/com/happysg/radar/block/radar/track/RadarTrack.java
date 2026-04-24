@@ -45,12 +45,13 @@ public class RadarTrack {
 
     public static RadarTrack sableSubLevel(String id, Vec3 position, Vec3 velocity, long scannedTime, String displayName, float height) {
         String entityType = displayName == null || displayName.isBlank() ? "sable:sub_level" : displayName;
-        return new RadarTrack(id, position, velocity, scannedTime, TrackCategory.CONTRAPTION, entityType, height, SOURCE_SABLE, false);
+        return new RadarTrack(id, position, velocity, scannedTime, TrackCategory.SABLE, entityType, height, SOURCE_SABLE, false);
     }
 
     public Color getColor() {
         return switch (trackCategory) {
             case CONTRAPTION -> new Color(RadarConfig.client().contraptionColor.get());
+            case SABLE -> new Color(RadarConfig.client().sableColor.get());
             case PLAYER -> new Color(RadarConfig.client().playerColor.get());
             case ANIMAL -> new Color(RadarConfig.client().friendlyColor.get());
             case HOSTILE -> new Color(RadarConfig.client().hostileColor.get());
@@ -62,7 +63,7 @@ public class RadarTrack {
 
     public MonitorSprite getSprite() {
         return switch (trackCategory) {
-            case CONTRAPTION -> MonitorSprite.CONTRAPTION_HITBOX;
+            case CONTRAPTION, SABLE -> MonitorSprite.CONTRAPTION_HITBOX;
             case PLAYER -> MonitorSprite.PLAYER;
             case PROJECTILE -> MonitorSprite.PROJECTILE;
             default -> MonitorSprite.ENTITY_HITBOX;
@@ -75,7 +76,7 @@ public class RadarTrack {
                 new Vec3(tag.getDouble("x"), tag.getDouble("y"), tag.getDouble("z")),
                 new Vec3(tag.getDouble("vx"), tag.getDouble("vy"), tag.getDouble("vz")),
                 tag.getLong("scannedTime"),
-                TrackCategory.values()[tag.getInt("Category")],
+                categoryFromOrdinal(tag.getInt("Category")),
                 tag.getString("entityType"),
                 tag.getFloat("eh"),
                 tag.contains("source") ? tag.getString("source") : SOURCE_ENTITY,
@@ -101,6 +102,14 @@ public class RadarTrack {
         tag.putBoolean("weaponTargetable", weaponTargetable);
 
         return tag;
+    }
+
+    private static TrackCategory categoryFromOrdinal(int ordinal) {
+        TrackCategory[] values = TrackCategory.values();
+        if (ordinal < 0 || ordinal >= values.length) {
+            return TrackCategory.MISC;
+        }
+        return values[ordinal];
     }
 
     public void updateRadarTrack(Entity entity) {

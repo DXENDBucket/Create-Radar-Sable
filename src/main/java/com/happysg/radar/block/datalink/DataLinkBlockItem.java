@@ -11,6 +11,7 @@ import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import com.happysg.radar.block.radar.bearing.RadarBearingBlock;
 import com.happysg.radar.compat.Mods;
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.AllDataBehaviors;
 import com.happysg.radar.registry.ModBlocks;
@@ -415,8 +416,8 @@ public class DataLinkBlockItem extends BlockItem {
 // -------------------------
 
     private static boolean withinRange(Level level, BlockPos a, BlockPos b, double range) {
-        Vec3 wa = a.getCenter();
-        Vec3 wb = b.getCenter();
+        Vec3 wa = SableRadarCompat.projectToWorld(level, a.getCenter());
+        Vec3 wb = SableRadarCompat.projectToWorld(level, b.getCenter());
         return wa.closerThan(wb, range);
     }
 

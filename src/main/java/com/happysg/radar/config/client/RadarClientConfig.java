@@ -16,6 +16,7 @@ public class RadarClientConfig extends ConfigBase {
     public ConfigInt playerColor = i(0x0000ff, 0, "playerColor", "This is the color of players on the monitor");
     public ConfigInt projectileColor = i(0xffff00, 0, "projectileColor", "This is the color of projectiles on the monitor");
     public ConfigInt contraptionColor = i(0xffffff, 0, "contraptionColor", "This is the color of contraptions on the monitor");
+    public ConfigInt sableColor = i(0xffff00, 0, "sableColor", "This is the color of Sable sub-levels on the monitor");
     public ConfigInt itemcolor = i(0xffa500,0,"itemcolor", "This is the color of dropped items on the monitor");
     public ConfigInt neutralEntityColor = i(0xffffff, 0, "neutralEntityColor", "This is the color of neutral entities on the monitor");
     public ConfigGroup monitorConfig = group(3,"monitorConfig","monitorConfig");

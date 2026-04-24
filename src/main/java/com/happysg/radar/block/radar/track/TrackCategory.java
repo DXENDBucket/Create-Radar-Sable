@@ -19,7 +19,8 @@ public enum TrackCategory {
     PROJECTILE,
     CONTRAPTION,
     ITEM,
-    MISC;
+    MISC,
+    SABLE;
 
 
     public static TrackCategory get(Entity entity) {

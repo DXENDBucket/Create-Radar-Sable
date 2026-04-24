@@ -72,7 +72,7 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     private boolean allowCategory(TrackCategory c) {
         return switch (c) {
             case PLAYER -> scanPlayers;
-            case CONTRAPTION -> scanContraptions;
+            case CONTRAPTION, SABLE -> scanContraptions;
             case PROJECTILE -> scanProjectiles;
             case ITEM -> scanItems;
 
