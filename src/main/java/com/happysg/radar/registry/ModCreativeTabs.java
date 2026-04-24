@@ -72,18 +72,11 @@ public class ModCreativeTabs {
         pOutput.accept(ModBlocks.NETWORK_FILTERER_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
         pOutput.accept(ModBlocks.FIRE_CONTROLLER_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
         pOutput.accept(ModBlocks.RADOME, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
-        pOutput.accept(ModBlocks.SMART_MOUNT, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
-        pOutput.accept(ModBlocks.SKY_RADAR, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
         pOutput.accept(ModBlocks.SIREN, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
-        pOutput.accept(ModBlocks.SONAR_BEARING, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
-        pOutput.accept(ModBlocks.SONAR_PANEL, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
         pOutput.accept(ModItems.IDENT_FILTER_ITEM, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
         pOutput.accept(ModItems.RADAR_FILTER_ITEM, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
         pOutput.accept(ModItems.TARGET_FILTER_ITEM, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
         pOutput.accept(ModItems.BINOCULARS, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
-        pOutput.accept(ModItems.RADAR_GOGGLES, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
-        pOutput.accept(ModItems.ARTILLERY_RADIO, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
-        pOutput.accept(ModBlocks.SHIELD_JAMMER, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
 
 
 
