@@ -26,6 +26,8 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 
@@ -161,6 +163,7 @@ public class MonitorBlock extends HorizontalDirectionalBlock implements IBE<Moni
     }
 
 
+    @OnlyIn(Dist.CLIENT)
     private static void openMonitorScreenClient(MonitorBlockEntity anyPiece) {
         var mc = net.minecraft.client.Minecraft.getInstance();
         if (mc.level == null) return;
