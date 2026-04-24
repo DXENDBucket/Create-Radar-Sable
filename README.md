@@ -11,8 +11,9 @@ This release targets:
 - Minecraft 1.21.1
 - NeoForge 21.1.227 or newer 21.1.x builds
 - Create 6.0.10
+- Create Big Cannons 5.10.1 or newer 5.x builds
 
-Create Big Cannons support is included for the 1.21.1 NeoForge builds used during testing. Sable compatibility is optional and only active when Sable is installed.
+Sable compatibility is optional and only active when Sable is installed.
 
 ## Features
 

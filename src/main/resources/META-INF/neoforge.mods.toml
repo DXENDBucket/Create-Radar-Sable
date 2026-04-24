@@ -41,8 +41,15 @@ side = "BOTH"
 
 [[dependencies.${mod_id}]]
 modId = "createbigcannons"
-type = "optional"
+type = "required"
 versionRange = "[5.10.1,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "sable"
+type = "optional"
+versionRange = "[0,)"
 ordering = "AFTER"
 side = "BOTH"
 
