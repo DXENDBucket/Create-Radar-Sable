@@ -1,5 +1,6 @@
 package com.happysg.radar.block.controller.track;
 
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.simibubi.create.content.kinetics.transmission.SplitShaftBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -92,7 +93,7 @@ public class TrackControllerBlockEntity extends SplitShaftBlockEntity {
     private double getAngleToTarget() {
         if (target == null)
             return getYaw();
-        Vec3 center = getBlockPos().getCenter();
+        Vec3 center = SableRadarCompat.projectToWorld(level, getBlockPos().getCenter());
         Vec3 relative = center.subtract(target);
         double yaw = Math.toDegrees(Math.atan2(relative.z, relative.x)) - 90;
         yaw = (yaw + 360) % 360; // Normalize to range [0, 360)

@@ -7,6 +7,7 @@ import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.compat.cbc.*;
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
 import com.mojang.logging.LogUtils;
 import net.createmod.catnip.math.VecHelper;
@@ -113,6 +114,10 @@ public class WeaponFiringControl {
         );
     }
 
+    private static boolean isTrackStateTarget(@Nullable RadarTrack track) {
+        return track != null && track.isSableSubLevel();
+    }
+
     private static void worldToFrac(AABB bb, Vec3 p, VisCache c) {
         double invX = invSpan(bb.minX, bb.maxX);
         double invY = invSpan(bb.minY, bb.maxY);
@@ -194,9 +199,9 @@ public class WeaponFiringControl {
         PitchOrientedContraptionEntity poce = cannonMount.getContraption();
 
         if (poce == null)
-            return cannonMount.getBlockPos().getCenter();
+            return SableRadarCompat.projectToWorld(level, cannonMount.getBlockPos().getCenter());
 
-        return poce.toGlobalVector(VecHelper.getCenterOf(BlockPos.ZERO), 1.0f);
+        return SableRadarCompat.projectToWorld(level, poce.toGlobalVector(VecHelper.getCenterOf(BlockPos.ZERO), 1.0f));
     }
 
 
@@ -204,7 +209,7 @@ public class WeaponFiringControl {
 
     private AABB inflatedAabb(Entity e) {
         AABB bb = e.getBoundingBox();
-        return bb.inflate(ENTITY_INFLATE);
+        return SableRadarCompat.projectAabbToWorld(e.level(), bb).inflate(ENTITY_INFLATE);
     }
 
 
@@ -642,7 +647,7 @@ public class WeaponFiringControl {
 
         if (binoMode) {
             lastTargetTick = level.getGameTime();
-        } else if (activetrack != null && targetEntity != null) {
+        } else if (activetrack != null && (targetEntity != null || isTrackStateTarget(activetrack))) {
             lastTargetTick = level.getGameTime();
         }
 
@@ -652,21 +657,25 @@ public class WeaponFiringControl {
         }
 
         if (!binoMode && activetrack != null && level instanceof ServerLevel sl) {
-            Entity e = null;
-            try {
-                e = getEntityByUUID(sl, UUID.fromString(activetrack.id()));
-            } catch (Throwable ignored) {}
+            if (isTrackStateTarget(activetrack)) {
+                targetEntity = null;
+            } else {
+                Entity e = null;
+                try {
+                    e = getEntityByUUID(sl, UUID.fromString(activetrack.id()));
+                } catch (Throwable ignored) {}
 
-            if (e == null || !e.isAlive()) {
-                LOGGER.warn("WFC: entity id={} not loaded/alive, stopping fire", activetrack.id());
-                stopFireCannon();
-                return;
+                if (e == null || !e.isAlive()) {
+                    LOGGER.warn("WFC: entity id={} not loaded/alive, stopping fire", activetrack.id());
+                    stopFireCannon();
+                    return;
+                }
+
+                targetEntity = e;
             }
-
-            targetEntity = e;
         }
 
-        if (!binoMode && activetrack != null && targetEntity == null) {
+        if (!binoMode && activetrack != null && targetEntity == null && !isTrackStateTarget(activetrack)) {
             LOGGER.warn("WFC: no resolved target entity, stopping fire (trackId={})", activetrack.id());
             stopFireCannon();
             return;
@@ -693,13 +702,21 @@ public class WeaponFiringControl {
         boolean lag;
         shooterVel = Vec3.ZERO;
         shooterAccel = Vec3.ZERO;
-        if(!binoMode && targetEntity != null){
-            target = targetEntity.position();
+        if(!binoMode && isTrackStateTarget(activetrack)){
+            target = activetrack.position();
+            if (target == null) {
+                stopFireCannon();
+                return;
+            }
+            targetVel = activetrack.velocity() != null ? activetrack.velocity() : Vec3.ZERO;
+            targetAccel = Vec3.ZERO;
+        }else if(!binoMode && targetEntity != null){
+            target = SableRadarCompat.projectEntityPosition(targetEntity);
             targetVel = VelocityTracker.getEstimatedVelocityPerTick(targetEntity);
             targetAccel = AccelerationTracker.getAccelerationPerTick2(targetEntity.getUUID(),targetVel);
         }else if(binoMode && binoTargetPos != null){
 
-            target = binoTargetPos.getCenter();
+            target = SableRadarCompat.projectToWorld(level, binoTargetPos.getCenter());
             targetVel = Vec3.ZERO;
             targetAccel = Vec3.ZERO;
         }else{
@@ -713,13 +730,23 @@ public class WeaponFiringControl {
         if (!binoMode && targetEntity != null) {
            // Vec3 vis = checkLineOfSight(targetEntity);
 
-            if (!checkLineOfSight(targetEntity.position())) {
+            if (!checkLineOfSight(target)) {
                 LOGGER.warn("WFC: LOS blocked to entity, stopping fire (id={})", targetEntity.getUUID());
                 stopFireCannon();
                 return;
             }
 
-            solvePos = targetEntity.position();
+            solvePos = target;
+        }
+
+        if (!binoMode && isTrackStateTarget(activetrack)) {
+            if (!checkLineOfSight(target)) {
+                LOGGER.warn("WFC: LOS blocked to track target, stopping fire (trackId={})", activetrack.getId());
+                stopFireCannon();
+                return;
+            }
+
+            solvePos = target;
         }
 
         double maxSpeed = 0.01; // 5 m/s in blocks/tick
@@ -756,7 +783,7 @@ public class WeaponFiringControl {
                 BlockEntity srcBe = serverLevel.getBlockEntity(srcPos);
 
                 if (srcBe instanceof com.happysg.radar.block.radar.behavior.IRadar radar) {
-                    Vec3 radarWorldPos = srcBe.getBlockPos().getCenter();
+                    Vec3 radarWorldPos = SableRadarCompat.projectToWorld(serverLevel, srcBe.getBlockPos().getCenter());
                     double d = cannonOrigin.distanceTo(radarWorldPos);
                     double cap = radar.getRange() + d; // relative-to-cannon max distance
 

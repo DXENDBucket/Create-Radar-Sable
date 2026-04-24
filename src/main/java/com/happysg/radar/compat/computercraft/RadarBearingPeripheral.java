@@ -3,6 +3,7 @@ package com.happysg.radar.compat.computercraft;
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import dan200.computercraft.api.lua.LuaFunction;
 import dan200.computercraft.api.peripheral.GenericPeripheral;
 import net.minecraft.world.phys.Vec3;
@@ -39,7 +40,7 @@ public class RadarBearingPeripheral implements GenericPeripheral {
     @LuaFunction(mainThread = true)
     public static HashMap<String, Double> getPosition(RadarBearingBlockEntity radarEntity){
         return getMapFromVector(
-                radarEntity.getWorldPos().getCenter()
+                SableRadarCompat.projectToWorld(radarEntity.getLevel(), radarEntity.getWorldPos().getCenter())
         );
     }
 

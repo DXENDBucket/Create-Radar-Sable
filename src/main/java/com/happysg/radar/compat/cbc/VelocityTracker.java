@@ -1,5 +1,6 @@
 package com.happysg.radar.compat.cbc;
 
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 
@@ -29,7 +30,7 @@ public class VelocityTracker {
             return LAST_VEL.getOrDefault(id, Vec3.ZERO);
         }
 
-        Vec3 now = e.position();
+        Vec3 now = SableRadarCompat.projectEntityPosition(e);
         Vec3 lastPos = LAST_POS.put(id, now);
         LAST_TICK.put(id, tick);
 

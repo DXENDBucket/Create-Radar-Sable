@@ -1,5 +1,6 @@
 package com.happysg.radar.block.controller.yaw;
 
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import net.minecraft.world.phys.Vec3;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
@@ -20,6 +21,7 @@ public class CannonMountYaw {
         Vec3 cannonCenter = controller.isUpsideDown()
                 ? controller.getBlockPos().below(3).getCenter()
                 : controller.getBlockPos().above(3).getCenter();
+        cannonCenter = SableRadarCompat.projectToWorld(controller.getLevel(), cannonCenter);
 
         double angle = controller.computeYawToTargetDeg(cannonCenter, targetPos);
         double newAngle = AutoYawControllerBlockEntity.wrap360(angle) + 180.0;

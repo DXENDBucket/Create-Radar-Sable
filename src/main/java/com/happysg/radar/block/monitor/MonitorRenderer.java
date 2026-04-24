@@ -4,6 +4,7 @@ import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.TrackCategory;
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.ModRenderTypes;
 import com.mojang.logging.LogUtils;
@@ -241,7 +242,10 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         float scale = radar.getRange();
         int size = monitor.getSize();
 
-        Vec3 radarPos = radar.getWorldPos().getCenter();
+        Vec3 radarPos = monitor.getRadarCenterPos();
+        if (radarPos == null) {
+            return;
+        }
         Vec3 relativePos = track.position().subtract(radarPos);
         // Transform to display coordinates
         float xOff = calculateTrackOffset(relativePos, monitorFacing, scale, true);
@@ -356,8 +360,13 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
     private Vec3 transformWorldToRadar(double x, double y, double z, IRadar radar,
                                        MonitorBlockEntity monitor, Direction facing,
                                        float range, int size) {
-        Vec3 radarPos = radar.getWorldPos().getCenter();
-        Vec3 relativePos = new Vec3(x, y, z).subtract(radarPos);
+        Vec3 radarPos = monitor.getRadarCenterPos();
+        if (radarPos == null) {
+            return Vec3.ZERO;
+        }
+
+        Vec3 worldPos = SableRadarCompat.projectToWorld(monitor.getLevel(), new Vec3(x, y, z));
+        Vec3 relativePos = worldPos.subtract(radarPos);
 
         float xOff = calculateTrackOffset(relativePos, facing, range, true) * TRACK_POSITION_SCALE;
         float zOff = calculateTrackOffset(relativePos, facing, range, false) * TRACK_POSITION_SCALE;

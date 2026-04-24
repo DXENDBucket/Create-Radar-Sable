@@ -1,6 +1,7 @@
 package com.happysg.radar.block.radar.track;
 
 import com.happysg.radar.block.monitor.MonitorSprite;
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.nbt.CompoundTag;
@@ -39,13 +40,13 @@ public class RadarTrack {
     }
 
     public RadarTrack(Entity entity) {
-        this(entity.getUUID().toString(), entity.position(), entity.getDeltaMovement(), entity.level().getGameTime(),
+        this(entity.getUUID().toString(), SableRadarCompat.projectEntityPosition(entity), SableRadarCompat.getEntityVelocity(entity), entity.level().getGameTime(),
                 TrackCategory.get(entity), entity.getType().toString(), entity.getBbHeight());
     }
 
     public static RadarTrack sableSubLevel(String id, Vec3 position, Vec3 velocity, long scannedTime, String displayName, float height) {
         String entityType = displayName == null || displayName.isBlank() ? "sable:sub_level" : displayName;
-        return new RadarTrack(id, position, velocity, scannedTime, TrackCategory.SABLE, entityType, height, SOURCE_SABLE, false);
+        return new RadarTrack(id, position, velocity, scannedTime, TrackCategory.SABLE, entityType, height, SOURCE_SABLE, true);
     }
 
     public Color getColor() {
@@ -113,8 +114,8 @@ public class RadarTrack {
     }
 
     public void updateRadarTrack(Entity entity) {
-        position = entity.position();
-        velocity = entity.getDeltaMovement();
+        position = SableRadarCompat.projectEntityPosition(entity);
+        velocity = SableRadarCompat.getEntityVelocity(entity);
         scannedTime = entity.level().getGameTime();
     }
 

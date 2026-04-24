@@ -9,6 +9,8 @@ import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.RadarTrackUtil;
 import com.happysg.radar.block.behavior.networks.config.AutoTargetingHelper;
+import com.happysg.radar.compat.sable.SableRadarCompat;
+import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.utils.NbtCompat;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.api.equipment.goggles.IHaveHoveringInformation;
@@ -283,7 +285,10 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 
         IRadar radar = r.get();
         DetectionConfig det = this.filter; // already synced from network (or legacy)
-        cachedTracks = radar.getTracks().stream().filter(det::test).toList();
+        cachedTracks = radar.getTracks().stream()
+                .filter(det::test)
+                .filter(track -> !isFilteredRadarSableTrack(radar, track))
+                .toList();
 
         if (!level.isClientSide) {
             activetrack = resolveActiveTrack();
@@ -291,6 +296,28 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     }
     public boolean isLinked() {
         return getRadarCenterPos() != null;
+    }
+
+    private boolean isFilteredRadarSableTrack(IRadar radar, @Nullable RadarTrack track) {
+        if (level == null || track == null || !track.isSableSubLevel()) {
+            return false;
+        }
+        if (!RadarConfig.server().preventSableSelfTargeting.get()) {
+            return false;
+        }
+
+        if (radar instanceof BlockEntity radarBe) {
+            Level radarLevel = radarBe.getLevel() != null ? radarBe.getLevel() : level;
+            Vec3 radarCenter = radarBe.getBlockPos().getCenter();
+            if (SableRadarCompat.isTrackAtPosition(radarLevel, track, radarCenter)) {
+                return true;
+            }
+            if (radarLevel != level && SableRadarCompat.isTrackAtPosition(level, track, radarCenter)) {
+                return true;
+            }
+        }
+
+        return radarPos != null && SableRadarCompat.isTrackAtPosition(level, track, radarPos.getCenter());
     }
 
     @Nullable
@@ -395,7 +422,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     @Nullable
     public Vec3 getRadarCenterPos() {
         if (radarPos == null || level == null) return null;
-        return radarPos.getCenter();
+        return SableRadarCompat.projectToWorld(level, radarPos.getCenter());
     }
 
 

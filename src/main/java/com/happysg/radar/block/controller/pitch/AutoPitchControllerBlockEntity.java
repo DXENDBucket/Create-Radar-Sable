@@ -6,6 +6,8 @@ import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.compat.Mods;
+import com.happysg.radar.compat.sable.SableRadarCompat;
+import com.happysg.radar.config.RadarConfig;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import net.minecraft.core.BlockPos;
@@ -225,6 +227,14 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
         }
 
+        if (isFilteredOwnSableTarget(tTrack)) {
+            track = null;
+            if (firingControl != null) {
+                firingControl.resetTarget();
+            }
+            return;
+        }
+
         if (tTrack != track) {
             track = tTrack;
         }
@@ -327,6 +337,9 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         if (firingControl == null) {
             return false;
         }
+        if (isFilteredOwnSableTarget(track)) {
+            return false;
+        }
 
         Mount mount = resolveMount();
         if (mount == null) {
@@ -334,6 +347,34 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         }
 
         return cannonHandler.canEngageTrack(mount.cbc, track, requireLos, sl);
+    }
+
+    private boolean isFilteredOwnSableTarget(@Nullable RadarTrack tTrack) {
+        if (tTrack == null || !tTrack.isSableSubLevel()) {
+            return false;
+        }
+        if (!RadarConfig.server().preventSableSelfTargeting.get()) {
+            return false;
+        }
+        if (level == null) {
+            return false;
+        }
+
+        Vec3 probe = worldPosition.getCenter();
+        WeaponNetworkData.WeaponGroupView view = getWeaponGroup();
+        if (view != null && view.mountPos() != null) {
+            probe = view.mountPos().getCenter();
+
+            BlockEntity mountBe = level.getBlockEntity(view.mountPos());
+            if (mountBe != null) {
+                Level mountLevel = mountBe.getLevel() != null ? mountBe.getLevel() : level;
+                if (SableRadarCompat.isTrackAtPosition(mountLevel, tTrack, probe)) {
+                    return true;
+                }
+            }
+        }
+
+        return SableRadarCompat.isTrackAtPosition(level, tTrack, probe);
     }
 
     @Nullable

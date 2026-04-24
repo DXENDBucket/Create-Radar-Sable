@@ -1,5 +1,6 @@
 package com.happysg.radar.compat.cbc;
 
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.math3.analysis.UnivariateFunction;
 import com.happysg.radar.math3.analysis.solvers.BrentSolver;
 import com.happysg.radar.math3.analysis.solvers.UnivariateSolver;
@@ -114,7 +115,7 @@ public class CannonTargeting {
     // OLD: legacy origin
     public static List<Double> calculatePitch(CannonMountBlockEntity mount, Vec3 targetPos, ServerLevel level) {
         if (mount == null || targetPos == null) return null;
-        Vec3 originPos = mount.getBlockPos().above(2).getCenter();
+        Vec3 originPos = SableRadarCompat.projectToWorld(level, mount.getBlockPos().above(2).getCenter());
         return calculatePitch(mount, originPos, targetPos, level);
     }
 }

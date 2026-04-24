@@ -2,6 +2,7 @@ package com.happysg.radar.block.monitor;
 
 
 import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -39,8 +40,10 @@ public class MonitorInputHandler {
                 .getValue(MonitorBlock.FACING);
 
         int size = controller.getSize();
-        Vec3 center = Vec3.atCenterOf(controller.getControllerPos())
+        Vec3 rawCenter = Vec3.atCenterOf(controller.getControllerPos())
                 .add(facing.getStepX() * (size - 1) / 2.0, (size - 1) / 2.0, facing.getStepZ() * (size - 1) / 2.0);
+        Vec3 projectedCenter = SableRadarCompat.projectToWorld(level, rawCenter);
+        Vec3 center = hit.distanceToSqr(projectedCenter) < hit.distanceToSqr(rawCenter) ? projectedCenter : rawCenter;
 
         Vec3 relative = hit.subtract(center);
         relative = adjustRelativeVectorForFacing(relative, monitorFacing);

@@ -38,6 +38,7 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     private boolean running = false;
     private SmartBlockEntity bearingEntity;
     private RadarBearingBlockEntity radarBearing;
+    Vec3 localScanPos = Vec3.ZERO;
     Vec3 scanPos = Vec3.ZERO;
 
     private final Set<Entity> scannedEntities = new HashSet<>();
@@ -124,8 +125,8 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
 
     private void updateScanPos() {
         Level level = blockEntity.getLevel();
-        Vec3 localPos = bearingEntity.getBlockPos().getCenter();
-        scanPos = level == null ? localPos : SableRadarCompat.projectToWorld(level, localPos);
+        localScanPos = bearingEntity.getBlockPos().getCenter();
+        scanPos = level == null ? localScanPos : SableRadarCompat.projectToWorld(level, localScanPos);
     }
 
     private void updateRadarTracks() {
@@ -157,7 +158,19 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
             return;
         }
 
-        String ownSubLevelId = SableRadarCompat.getContainingSubLevelId(level, bearingEntity.getBlockPos().getCenter());
+        String ownSubLevelId = null;
+        if (RadarConfig.server().preventSableSelfTargeting.get()) {
+            ownSubLevelId = SableRadarCompat.getContainingSubLevelId(level, localScanPos);
+            if (ownSubLevelId == null && scanPos != null) {
+                ownSubLevelId = SableRadarCompat.getContainingSubLevelId(level, scanPos);
+            }
+            if (ownSubLevelId != null) {
+                String finalOwnSubLevelId = ownSubLevelId;
+                radarTracks.entrySet().removeIf(entry -> SableRadarCompat.isTrackForSubLevel(entry.getValue(), finalOwnSubLevelId));
+            }
+            radarTracks.entrySet().removeIf(entry -> isOwnSableTrack(serverLevel, entry.getValue()));
+        }
+
         List<RadarTrack> sableTracks = SableRadarCompat.collectSubLevelTracks(
                 serverLevel,
                 getRadarAABB(),
@@ -167,13 +180,27 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         );
 
         for (RadarTrack track : sableTracks) {
+            if (RadarConfig.server().preventSableSelfTargeting.get() && isOwnSableTrack(serverLevel, track)) {
+                continue;
+            }
             radarTracks.put(track.id(), track);
         }
     }
 
+    private boolean isOwnSableTrack(ServerLevel level, RadarTrack track) {
+        if (track == null || !track.isSableSubLevel()) {
+            return false;
+        }
+        if (SableRadarCompat.isTrackAtPosition(level, track, localScanPos)) {
+            return true;
+        }
+        return scanPos != null && SableRadarCompat.isTrackAtPosition(level, track, scanPos);
+    }
+
     private boolean isInFovAndRange(Vec3 target) {
-        double horizontalDistance = Math.sqrt(Math.pow(target.x() - scanPos.x(), 2) + Math.pow(target.z() - scanPos.z(), 2));
-        double verticalDistance = Math.abs(target.y() - scanPos.y());
+        Vec3 worldTarget = projectToWorld(target);
+        double horizontalDistance = Math.sqrt(Math.pow(worldTarget.x() - scanPos.x(), 2) + Math.pow(worldTarget.z() - scanPos.z(), 2));
+        double verticalDistance = Math.abs(worldTarget.y() - scanPos.y());
         double yScanRange = RadarConfig.server().radarYScanRange.get();
 
         if (horizontalDistance > range || verticalDistance > yScanRange)
@@ -182,7 +209,7 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         if (horizontalDistance < 2)
             return true;
 
-        double angleToEntity = Math.toDegrees(Math.atan2(target.x() - scanPos.x(), target.z() - scanPos.z()));
+        double angleToEntity = Math.toDegrees(Math.atan2(worldTarget.x() - scanPos.x(), worldTarget.z() - scanPos.z()));
         angleToEntity = (angleToEntity + 360) % 360;
         double angleDiff = Math.abs(angleToEntity - angle);
         if (angleDiff > 180) angleDiff = 360 - angleDiff;
@@ -221,30 +248,38 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         boolean scanAll =
                 scanPlayers && scanContraptions && scanMobs && scanAnimals && scanProjectiles && scanItems;
 
-        for (AABB aabb : splitAABB(getRadarAABB(), 256)) {
-            if (scanAll) {
-                scannedEntities.addAll(level.getEntities(null, aabb));
-                continue;
-            }
+        List<AABB> sourceBoxes = List.of(getRadarAABB());
+        double yScan = RadarConfig.server().radarYScanRange.get();
+        if (level instanceof ServerLevel serverLevel) {
+            sourceBoxes = SableRadarCompat.collectEntityCandidateBoxes(serverLevel, getRadarAABB(), localScanPos, range, yScan);
+        }
 
-            if (scanPlayers)
-                scannedEntities.addAll(level.getEntitiesOfClass(Player.class, aabb));
+        for (AABB sourceBox : sourceBoxes) {
+            for (AABB aabb : splitAABB(sourceBox, 256)) {
+                if (scanAll) {
+                    scannedEntities.addAll(level.getEntities(null, aabb));
+                    continue;
+                }
 
-            if (scanProjectiles)
-                scannedEntities.addAll(level.getEntitiesOfClass(Projectile.class, aabb));
+                if (scanPlayers)
+                    scannedEntities.addAll(level.getEntitiesOfClass(Player.class, aabb));
 
-            if (scanItems)
-                scannedEntities.addAll(level.getEntitiesOfClass(ItemEntity.class, aabb));
+                if (scanProjectiles)
+                    scannedEntities.addAll(level.getEntitiesOfClass(Projectile.class, aabb));
 
-            if (scanContraptions)
-                scannedEntities.addAll(level.getEntitiesOfClass(AbstractContraptionEntity.class, aabb));
+                if (scanItems)
+                    scannedEntities.addAll(level.getEntitiesOfClass(ItemEntity.class, aabb));
 
-            if (scanAnimals)
-                scannedEntities.addAll(level.getEntitiesOfClass(Animal.class, aabb));
+                if (scanContraptions)
+                    scannedEntities.addAll(level.getEntitiesOfClass(AbstractContraptionEntity.class, aabb));
 
-            if (scanMobs) {
-                scannedEntities.addAll(level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, aabb,
-                        e -> !(e instanceof Animal)));
+                if (scanAnimals)
+                    scannedEntities.addAll(level.getEntitiesOfClass(Animal.class, aabb));
+
+                if (scanMobs) {
+                    scannedEntities.addAll(level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, aabb,
+                            e -> !(e instanceof Animal)));
+                }
             }
         }
     }
@@ -256,14 +291,16 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         double z = radarPos.z;
 
         double yScan = RadarConfig.server().radarYScanRange.get();
-        Level level = blockEntity.getLevel();
-        double minY = level != null ? Math.max(y - yScan, level.getMinBuildHeight()) : y - yScan;
-        double maxY = level != null ? Math.min(y + yScan, level.getMaxBuildHeight()) : y + yScan;
 
         return new AABB(
-                x - range, minY, z - range,
-                x + range, maxY, z + range
+                x - range, y - yScan, z - range,
+                x + range, y + yScan, z + range
         );
+    }
+
+    private Vec3 projectToWorld(Vec3 position) {
+        Level level = blockEntity.getLevel();
+        return level == null ? position : SableRadarCompat.projectToWorld(level, position);
     }
 
     public static List<AABB> splitAABB(AABB aabb, double maxSize) {

@@ -3,6 +3,7 @@ package com.happysg.radar.block.guidance;
 import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -43,7 +44,7 @@ public class RadarGuidanceBlockEntity extends GuidanceBlockEntity {
         if (missile.level().isClientSide) return;
         checkForTarget(missile.level());
         if (target == null) return;
-        Vec3 missilePos = missile.position();
+        Vec3 missilePos = SableRadarCompat.projectToWorld(missile.level(), missile.position());
         Vec3 targetPos = target;
         Vec3 targetVelocity = Vec3.ZERO;
         Vec3 missileVelocity = missile.getDeltaMovement();
@@ -61,7 +62,7 @@ public class RadarGuidanceBlockEntity extends GuidanceBlockEntity {
             double t2 = (-b - Math.sqrt(discriminant)) / (2.0 * a);
             timeToIntercept = Math.min(distance, t2) > 0.0 ? Math.min(distance, t2) : Math.max(distance, t2);
         } else {
-            distance = missile.position().distanceTo(target);
+            distance = missilePos.distanceTo(target);
             timeToIntercept = distance / missileSpeed;
         }
 

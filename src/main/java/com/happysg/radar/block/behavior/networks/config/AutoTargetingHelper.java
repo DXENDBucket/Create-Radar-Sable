@@ -2,6 +2,7 @@ package com.happysg.radar.block.behavior.networks.config;
 
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.TrackCategory;
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -62,6 +63,7 @@ public final class AutoTargetingHelper {
         if (identificationConfig == null) identificationConfig = IdentificationConfig.DEFAULT;
 
         Set<String> ignoreList = buildIgnoreList(identificationConfig);
+        Vec3 worldOrigin = serverLevel != null && origin != null ? SableRadarCompat.projectToWorld(serverLevel, origin) : origin;
 
         double best = Double.MAX_VALUE;
         RadarTrack bestTrack = null;
@@ -83,17 +85,17 @@ public final class AutoTargetingHelper {
             if (isInSafeZone(pos, safeZones))
                 continue;
 
-            if (targetingConfig.lineOfSight() && serverLevel != null && origin != null) {
-                if (!hasLineOfSight(serverLevel, origin, track)) {
+            if (targetingConfig.lineOfSight() && serverLevel != null && worldOrigin != null) {
+                if (!hasLineOfSight(serverLevel, worldOrigin, track)) {
                     continue;
                 }
             }
 
-            double d = pos.distanceTo(origin);
+            double d = worldOrigin == null ? 0 : pos.distanceTo(worldOrigin);
             if (d >= best)
                 continue;
 
-            if (projectileApproaching(track, origin)) {
+            if (worldOrigin != null && projectileApproaching(track, worldOrigin)) {
                 best = d;
                 bestTrack = track;
             }
@@ -105,6 +107,7 @@ public final class AutoTargetingHelper {
     public static boolean hasLineOfSight(ServerLevel level, Vec3 start, RadarTrack track) {
         if (level == null || start == null || track == null || track.position() == null) return false;
 
+        Vec3 worldStart = SableRadarCompat.projectToWorld(level, start);
         float height = track.getEnityHeight();
         int blocksHigh = (int) Math.ceil(height);
 
@@ -112,7 +115,7 @@ public final class AutoTargetingHelper {
             Vec3 to = track.position().add(0, h + 0.5, 0);
 
             ClipContext ctx = new ClipContext(
-                    start, to,
+                    worldStart, to,
                     ClipContext.Block.COLLIDER,
                     ClipContext.Fluid.NONE,
                     CollisionContext.empty()

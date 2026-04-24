@@ -4,6 +4,7 @@ import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
+import com.happysg.radar.compat.sable.SableRadarCompat;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.utils.ItemNbt;
 import com.happysg.radar.utils.NbtCompat;
@@ -69,6 +70,7 @@ public class GuidedFuzeItem extends FuzeItem {
         Vec3 target = monitor.activeTrackCache.getPosition();
         if (target == null)
             return detonate;
+        Vec3 projectilePos = SableRadarCompat.projectToWorld(projectile.level(), projectile.position());
 
         // --- store initial heading at the top of the arc (first descending tick) ---
         if (!tag.contains("initialHeadingYaw")) {
@@ -78,7 +80,7 @@ public class GuidedFuzeItem extends FuzeItem {
 
         // --- enforce +/- 30 degree seeker cone from initial heading ---
         double initialYaw = tag.getDouble("initialHeadingYaw");
-        Vec3 toTarget = target.subtract(projectile.position());
+        Vec3 toTarget = target.subtract(projectilePos);
 
         double targetYaw = yawFromHorizontal(toTarget);
         double yawDelta = wrapDegrees(targetYaw - initialYaw);
@@ -90,11 +92,11 @@ public class GuidedFuzeItem extends FuzeItem {
         }
 
         // --- your existing "valid" gating ---
-        double dx = projectile.position().x - target.x;
-        double dz = projectile.position().z - target.z;
+        double dx = projectilePos.x - target.x;
+        double dz = projectilePos.z - target.z;
         double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
 
-        if (Math.abs(projectile.position().y - target.y) > horizontalDistance / 2 || tag.getBoolean("valid")) {
+        if (Math.abs(projectilePos.y - target.y) > horizontalDistance / 2 || tag.getBoolean("valid")) {
             tag.putBoolean("valid", true);
         } else {
             ItemNbt.setTag(stack, tag);

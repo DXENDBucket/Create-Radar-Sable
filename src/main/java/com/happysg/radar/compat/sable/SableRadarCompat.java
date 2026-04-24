@@ -4,6 +4,7 @@ import com.happysg.radar.block.radar.track.RadarTrack;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Position;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -62,6 +63,23 @@ public final class SableRadarCompat {
         return position;
     }
 
+    public static Vec3 projectEntityPosition(Entity entity) {
+        if (entity == null) {
+            return Vec3.ZERO;
+        }
+        return projectToWorld(entity.level(), entity.position());
+    }
+
+    public static Vec3 getEntityVelocity(Entity entity) {
+        if (entity == null) {
+            return Vec3.ZERO;
+        }
+
+        Vec3 ownVelocity = entity.getDeltaMovement();
+        Vec3 subLevelVelocity = getVelocity(entity.level(), entity.position());
+        return ownVelocity.add(subLevelVelocity);
+    }
+
     @Nullable
     public static String getContainingSubLevelId(Level level, Vec3 position) {
         if (level == null || position == null || !isAvailable()) {
@@ -71,11 +89,85 @@ public final class SableRadarCompat {
         try {
             Object subLevel = getContaining.invoke(companion, level, position);
             UUID id = getSubLevelUuid(subLevel);
-            return id == null ? null : id.toString();
+            if (id != null) {
+                return id.toString();
+            }
         } catch (Throwable throwable) {
             warnOnce("Failed to resolve containing Sable sub-level", throwable);
-            return null;
         }
+
+        Vec3 projected = projectToWorld(level, position);
+        if (projected.distanceToSqr(position) > 1.0E-4) {
+            try {
+                Object subLevel = getContaining.invoke(companion, level, projected);
+                UUID id = getSubLevelUuid(subLevel);
+                if (id != null) {
+                    return id.toString();
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+
+        if (level instanceof ServerLevel serverLevel) {
+            String id = getContainingSubLevelIdFromBounds(serverLevel, position);
+            if (id != null) {
+                return id;
+            }
+
+            if (projected.distanceToSqr(position) > 1.0E-4) {
+                return getContainingSubLevelIdFromBounds(serverLevel, projected);
+            }
+        }
+
+        return null;
+    }
+
+    public static boolean isTrackForSubLevel(@Nullable RadarTrack track, @Nullable String subLevelId) {
+        if (track == null || subLevelId == null || !track.isSableSubLevel()) {
+            return false;
+        }
+
+        UUID trackUuid = getTrackSubLevelUuid(track);
+        return trackUuid != null && trackUuid.toString().equals(subLevelId);
+    }
+
+    public static boolean trackContainsPosition(Level level, @Nullable RadarTrack track, Vec3 position) {
+        if (level == null || track == null || position == null || !track.isSableSubLevel() || !isAvailable()) {
+            return false;
+        }
+
+        UUID uuid = getTrackSubLevelUuid(track);
+        if (uuid == null || !(level instanceof ServerLevel serverLevel)) {
+            return false;
+        }
+
+        Object subLevel = getSubLevel(serverLevel, uuid);
+        if (subLevel == null || isRemoved(subLevel)) {
+            return false;
+        }
+
+        AABB rawBox = getSubLevelRawAabb(subLevel);
+        Vec3 projectedPosition = projectToWorld(level, position);
+
+        if (containsWithTolerance(rawBox, position) || containsWithTolerance(rawBox, projectedPosition)) {
+            return true;
+        }
+
+        AABB projectedBox = projectAabbToWorld(level, rawBox);
+        return containsWithTolerance(projectedBox, position) || containsWithTolerance(projectedBox, projectedPosition);
+    }
+
+    public static boolean isTrackAtPosition(Level level, @Nullable RadarTrack track, Vec3 position) {
+        if (level == null || track == null || position == null || !track.isSableSubLevel()) {
+            return false;
+        }
+
+        if (trackContainsPosition(level, track, position)) {
+            return true;
+        }
+
+        String subLevelId = getContainingSubLevelId(level, position);
+        return isTrackForSubLevel(track, subLevelId);
     }
 
     public static List<RadarTrack> collectSubLevelTracks(ServerLevel level, AABB scanBox, @Nullable String ignoredSubLevelId,
@@ -108,6 +200,95 @@ public final class SableRadarCompat {
         }
 
         return tracks;
+    }
+
+    public static List<AABB> collectEntityCandidateBoxes(ServerLevel level, AABB worldScanBox, Vec3 localScanCenter,
+                                                         double horizontalRange, double yRange) {
+        if (level == null || worldScanBox == null) {
+            return List.of();
+        }
+
+        List<AABB> boxes = new ArrayList<>();
+        addDistinct(boxes, worldScanBox);
+
+        if (localScanCenter != null) {
+            Vec3 projectedCenter = projectToWorld(level, localScanCenter);
+            if (projectedCenter.distanceToSqr(localScanCenter) > 1.0E-4) {
+                addDistinct(boxes, scanBoxAround(localScanCenter, horizontalRange, yRange));
+            }
+        }
+
+        if (!isAvailable()) {
+            return boxes;
+        }
+
+        try {
+            Object container = getContainer.invoke(null, level);
+            if (container == null) {
+                return boxes;
+            }
+
+            Object all = getAllSubLevels.invoke(container);
+            if (!(all instanceof Iterable<?> subLevels)) {
+                return boxes;
+            }
+
+            for (Object subLevel : subLevels) {
+                if (subLevel == null || isRemoved(subLevel)) {
+                    continue;
+                }
+
+                AABB rawBox = getSubLevelRawAabb(subLevel);
+                if (rawBox == null) {
+                    continue;
+                }
+
+                AABB projectedBox = projectAabbToWorld(level, rawBox);
+                if (projectedBox.intersects(worldScanBox)) {
+                    addDistinct(boxes, rawBox);
+                }
+            }
+        } catch (Throwable throwable) {
+            warnOnce("Failed to collect Sable entity scan boxes", throwable);
+        }
+
+        return boxes;
+    }
+
+    public static AABB projectAabbToWorld(Level level, AABB box) {
+        if (level == null || box == null || !isAvailable()) {
+            return box;
+        }
+
+        Vec3[] corners = new Vec3[]{
+                new Vec3(box.minX, box.minY, box.minZ),
+                new Vec3(box.minX, box.minY, box.maxZ),
+                new Vec3(box.minX, box.maxY, box.minZ),
+                new Vec3(box.minX, box.maxY, box.maxZ),
+                new Vec3(box.maxX, box.minY, box.minZ),
+                new Vec3(box.maxX, box.minY, box.maxZ),
+                new Vec3(box.maxX, box.maxY, box.minZ),
+                new Vec3(box.maxX, box.maxY, box.maxZ)
+        };
+
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        double maxZ = Double.NEGATIVE_INFINITY;
+
+        for (Vec3 corner : corners) {
+            Vec3 projected = projectToWorld(level, corner);
+            minX = Math.min(minX, projected.x);
+            minY = Math.min(minY, projected.y);
+            minZ = Math.min(minZ, projected.z);
+            maxX = Math.max(maxX, projected.x);
+            maxY = Math.max(maxY, projected.y);
+            maxZ = Math.max(maxZ, projected.z);
+        }
+
+        return new AABB(minX, minY, minZ, maxX, maxY, maxZ);
     }
 
     @Nullable
@@ -163,7 +344,7 @@ public final class SableRadarCompat {
         }
     }
 
-    private static Vec3 getVelocity(Level level, Vec3 position) {
+    public static Vec3 getVelocity(Level level, Vec3 position) {
         try {
             Object velocity = getVelocityAt.invoke(companion, level, position);
             if (velocity instanceof Vec3 vec) {
@@ -173,6 +354,151 @@ public final class SableRadarCompat {
         }
 
         return Vec3.ZERO;
+    }
+
+    @Nullable
+    private static AABB getSubLevelRawAabb(Object subLevel) {
+        try {
+            Object bounds = invokeNoArg(subLevel, "boundingBox");
+            Object aabb = invokeNoArg(bounds, "toMojang");
+            if (aabb instanceof AABB box) {
+                return box;
+            }
+        } catch (Throwable ignored) {
+        }
+
+        try {
+            Object bounds = invokeNoArg(subLevel, "boundingBox");
+            double minX = ((Number) invokeNoArg(bounds, "minX")).doubleValue();
+            double minY = ((Number) invokeNoArg(bounds, "minY")).doubleValue();
+            double minZ = ((Number) invokeNoArg(bounds, "minZ")).doubleValue();
+            double maxX = ((Number) invokeNoArg(bounds, "maxX")).doubleValue();
+            double maxY = ((Number) invokeNoArg(bounds, "maxY")).doubleValue();
+            double maxZ = ((Number) invokeNoArg(bounds, "maxZ")).doubleValue();
+            return new AABB(minX, minY, minZ, maxX, maxY, maxZ);
+        } catch (Throwable throwable) {
+            return null;
+        }
+    }
+
+    private static AABB scanBoxAround(Vec3 center, double horizontalRange, double yRange) {
+        return new AABB(
+                center.x - horizontalRange, center.y - yRange, center.z - horizontalRange,
+                center.x + horizontalRange, center.y + yRange, center.z + horizontalRange
+        );
+    }
+
+    @Nullable
+    private static UUID getTrackSubLevelUuid(@Nullable RadarTrack track) {
+        if (track == null || !track.isSableSubLevel()) {
+            return null;
+        }
+
+        String trackId = track.id();
+        if (trackId == null) {
+            return null;
+        }
+
+        if (trackId.startsWith(TRACK_ID_PREFIX)) {
+            trackId = trackId.substring(TRACK_ID_PREFIX.length());
+        }
+
+        try {
+            return UUID.fromString(trackId);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    @Nullable
+    private static Object getSubLevel(ServerLevel level, UUID uuid) {
+        try {
+            Object container = getContainer.invoke(null, level);
+            if (container == null) {
+                return null;
+            }
+
+            Object all = getAllSubLevels.invoke(container);
+            if (!(all instanceof Iterable<?> subLevels)) {
+                return null;
+            }
+
+            for (Object subLevel : subLevels) {
+                UUID subLevelId = getSubLevelUuid(subLevel);
+                if (uuid.equals(subLevelId)) {
+                    return subLevel;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
+        return null;
+    }
+
+    @Nullable
+    private static String getContainingSubLevelIdFromBounds(ServerLevel level, Vec3 position) {
+        try {
+            Object container = getContainer.invoke(null, level);
+            if (container == null) {
+                return null;
+            }
+
+            Object all = getAllSubLevels.invoke(container);
+            if (!(all instanceof Iterable<?> subLevels)) {
+                return null;
+            }
+
+            for (Object subLevel : subLevels) {
+                if (subLevel == null || isRemoved(subLevel)) {
+                    continue;
+                }
+
+                UUID uuid = getSubLevelUuid(subLevel);
+                if (uuid == null) {
+                    continue;
+                }
+
+                AABB rawBox = getSubLevelRawAabb(subLevel);
+                if (containsWithTolerance(rawBox, position)) {
+                    return uuid.toString();
+                }
+
+                AABB projectedBox = projectAabbToWorld(level, rawBox);
+                if (containsWithTolerance(projectedBox, position)) {
+                    return uuid.toString();
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
+        return null;
+    }
+
+    private static boolean containsWithTolerance(@Nullable AABB box, Vec3 position) {
+        return box != null && box.inflate(1.0).contains(position);
+    }
+
+    private static void addDistinct(List<AABB> boxes, AABB box) {
+        if (box == null) {
+            return;
+        }
+
+        for (AABB existing : boxes) {
+            if (sameBox(existing, box)) {
+                return;
+            }
+        }
+
+        boxes.add(box);
+    }
+
+    private static boolean sameBox(AABB a, AABB b) {
+        return Double.compare(a.minX, b.minX) == 0
+                && Double.compare(a.minY, b.minY) == 0
+                && Double.compare(a.minZ, b.minZ) == 0
+                && Double.compare(a.maxX, b.maxX) == 0
+                && Double.compare(a.maxY, b.maxY) == 0
+                && Double.compare(a.maxZ, b.maxZ) == 0;
     }
 
     private static double getSubLevelHeight(Object subLevel) {

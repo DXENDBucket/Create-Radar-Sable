@@ -12,6 +12,7 @@ public class RadarServerConfig extends ConfigBase {
     public final ConfigInt monitorMaxSize = i(9, 1, "monitorMaxSize", "Maximum size of monitor MultiBlock");
     public final ConfigFloat radarGuidanceTurnRate = f(.15f, 0f, 1f, "radarGuidanceTurnRate", "Turn rate of radar guidance for CBCMW Missiles");
     public final ConfigInt leadFiringDelay = i(0,0,1000,"firingDelay", "The firing delay used in leading calculation. Higher values may prove useful in laggy environments");
+    public final ConfigBool preventSableSelfTargeting = b(true, "preventSableSelfTargeting", "If true, Sable sub-levels hosting the radar or cannon will not be selected as weapon targets");
     public final ConfigFloat controllerPhysbearingMaxSpeed = f(25,2,25,"controllerPhysbearingMaxSpeed", "Increases the max Rotational speed of phys bearings controlled by Pitch/Yaw controllers");
     public final ConfigInt binoRaycastRange = i(512,1,1000,"binocularRange", "The range at which the binocular can acquire a target");
 

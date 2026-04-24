@@ -10,6 +10,8 @@ import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.radar.behavior.RadarScanningBlockBehavior;
 import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.compat.sable.SableRadarCompat;
+import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.item.binos.Binoculars;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.utils.ItemNbt;
@@ -121,7 +123,10 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
         // rebuild track cache filtered
 
-        cachedTracks = radar.getTracks().stream().filter(detectionCache::test).toList();
+        cachedTracks = radar.getTracks().stream()
+                .filter(detectionCache::test)
+                .filter(track -> !isFilteredRadarSableTarget(sl, radar, track))
+                .toList();
 
         // resolve current selected track from group.selectedTargetId
         RadarTrack selected = resolveSelectedTrack(group.selectedTargetId);
@@ -180,11 +185,13 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         String newId = selected == null ? null : selected.getId();
         int newCfgHash = cfgHash(cfg2);
         long newZonesHash = safeZonesHash(safeZones);
+        boolean selectedNeedsStatePush = selected != null && selected.isSableSubLevel();
 
         boolean changed =
                 !Objects.equals(lastPushedTrackId, newId) ||
                         lastPushedCfgHash != newCfgHash ||
-                        lastPushedSafeZonesHash != newZonesHash;
+                        lastPushedSafeZonesHash != newZonesHash ||
+                        selectedNeedsStatePush;
 
         activeTrackCache = selected;
 
@@ -222,6 +229,11 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
     private void applySelectedTarget(ServerLevel sl, NetworkData data, NetworkData.Group group,
                                      @Nullable RadarTrack track, boolean wasAuto) {
+        if (isFilteredRadarSableTarget(sl, group.radarPos, track)) {
+            track = null;
+            wasAuto = false;
+        }
+
         this.selectedWasAuto = wasAuto;
 
         data.setSelectedTargetId(group, track == null ? null : track.getId());
@@ -233,8 +245,41 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     }
 
     private double distSqFromFilterer(Vec3 pos) {
-        Vec3 filtererPos = worldPosition.getCenter();
+        Vec3 filtererPos = SableRadarCompat.projectToWorld(level, worldPosition.getCenter());
         return filtererPos.distanceToSqr(pos);
+    }
+
+    private boolean isFilteredRadarSableTarget(ServerLevel sl, @Nullable IRadar radar, @Nullable RadarTrack track) {
+        if (radar instanceof BlockEntity radarBe) {
+            Level radarLevel = radarBe.getLevel() != null ? radarBe.getLevel() : sl;
+            Vec3 radarCenter = radarBe.getBlockPos().getCenter();
+            if (isFilteredSableTargetAt(radarLevel, track, radarCenter)) {
+                return true;
+            }
+            if (radarLevel != sl && isFilteredSableTargetAt(sl, track, radarCenter)) {
+                return true;
+            }
+        }
+
+        return isFilteredRadarSableTarget(sl, radarPosCache, track);
+    }
+
+    private boolean isFilteredRadarSableTarget(ServerLevel sl, @Nullable BlockPos radarPos, @Nullable RadarTrack track) {
+        if (track == null || !track.isSableSubLevel()) {
+            return false;
+        }
+        if (!RadarConfig.server().preventSableSelfTargeting.get()) {
+            return false;
+        }
+        if (radarPos == null) {
+            return false;
+        }
+
+        return isFilteredSableTargetAt(sl, track, radarPos.getCenter());
+    }
+
+    private boolean isFilteredSableTargetAt(Level queryLevel, @Nullable RadarTrack track, Vec3 position) {
+        return SableRadarCompat.isTrackAtPosition(queryLevel, track, position);
     }
 
     private boolean anyCannonCanEngage(ServerLevel sl, RadarTrack track, boolean requireLos) {
