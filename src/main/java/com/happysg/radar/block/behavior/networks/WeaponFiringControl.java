@@ -146,7 +146,7 @@ public class WeaponFiringControl {
         this.yawController = yawController;
         this.level = cannonMount.getLevel();
 
-        LOGGER.debug("FiringControlBlockEntity.<init>() 鈫?controller={} mountPos={}", controller, cannonMount.getBlockPos());
+        LOGGER.debug("Firing control initialized: controller={} mountPos={}", controller, cannonMount.getBlockPos());
     }
     private RayResult rayClear(Vec3 start, Vec3 end) {
 
@@ -611,7 +611,7 @@ public class WeaponFiringControl {
     }
 
     public void setSafeZones(List<AABB> safeZones) {
-        LOGGER.debug("setSafeZones() 鈫?{} zones", safeZones.size());
+        LOGGER.debug("Set safe zones: {} zones", safeZones.size());
         this.safeZones = safeZones;
     }
     public  Entity getEntityByUUID(ServerLevel level, UUID uuid) {
@@ -681,7 +681,7 @@ public class WeaponFiringControl {
                 } catch (Throwable ignored) {}
 
                 if (e == null || !e.isAlive()) {
-                    LOGGER.warn("WFC: entity id={} not loaded/alive, stopping fire", activetrack.id());
+                    LOGGER.debug("Target entity id={} is not loaded or alive; stopping fire", activetrack.id());
                     stopFireCannon();
                     return;
                 }
@@ -691,7 +691,7 @@ public class WeaponFiringControl {
         }
 
         if (!binoMode && activetrack != null && targetEntity == null && !isTrackStateTarget(activetrack)) {
-            LOGGER.warn("WFC: no resolved target entity, stopping fire (trackId={})", activetrack.id());
+            LOGGER.debug("No resolved target entity; stopping fire (trackId={})", activetrack.id());
             stopFireCannon();
             return;
         }
@@ -705,14 +705,14 @@ public class WeaponFiringControl {
 
         if (!binoMode && isTrackStateTarget(activetrack)
                 && !SableRadarCompat.isTrackValid(serverLevel, activetrack)) {
-            LOGGER.warn("WFC: Sable target is no longer valid, stopping fire (trackId={})", activetrack.getId());
+            LOGGER.debug("Sable target is no longer valid; stopping fire (trackId={})", activetrack.getId());
             resetTarget();
             return;
         }
 
         if (targetEntity != null) {
             if (!targetEntity.isAlive()) {
-                LOGGER.warn("WFC: target entity died mid-tick, stopping fire (id={})", targetEntity.getUUID());
+                LOGGER.debug("Target entity died mid-tick; stopping fire (id={})", targetEntity.getUUID());
                 stopFireCannon();
                 return;
             }
@@ -753,7 +753,7 @@ public class WeaponFiringControl {
            // Vec3 vis = checkLineOfSight(targetEntity);
 
             if (!checkLineOfSight(target)) {
-                LOGGER.warn("WFC: LOS blocked to entity, stopping fire (id={})", targetEntity.getUUID());
+                LOGGER.debug("Line of sight blocked to entity; stopping fire (id={})", targetEntity.getUUID());
                 stopFireCannon();
                 return;
             }
@@ -763,7 +763,7 @@ public class WeaponFiringControl {
 
         if (!binoMode && isTrackStateTarget(activetrack)) {
             if (!checkLineOfSight(target)) {
-                LOGGER.warn("WFC: LOS blocked to track target, stopping fire (trackId={})", activetrack.getId());
+                LOGGER.debug("Line of sight blocked to track target; stopping fire (trackId={})", activetrack.getId());
                 stopFireCannon();
                 return;
             }
@@ -868,17 +868,17 @@ public class WeaponFiringControl {
         boolean cannonReady = CannonUtil.isCannonReadyToFire(cannonMount);
         boolean stableOk = (aimStableTicks >= AIM_STABLE_REQUIRED) || (!lag);
 
-        if (level.getGameTime() % 20 == 0) {
-            LOGGER.warn("WFC FIREGATES: auto={} lead={} laserNoLead={} yawPitchOk={} safeOk={} cannonReady={} stableOk={} firingBE={} target={} aim={} offset={} stable={}/{}", auto, hasLeadSolution, canFireWithoutLead, yawPitchOk, safeOk, cannonReady, stableOk, fireController != null, target, offsetAim, offset, aimStableTicks, AIM_STABLE_REQUIRED);
+        if (RadarConfig.DEBUG_BEAMS && level.getGameTime() % 20 == 0) {
+            LOGGER.debug("Firing gates: auto={} lead={} laserNoLead={} yawPitchOk={} safeOk={} cannonReady={} stableOk={} firingBE={} target={} aim={} offset={} stable={}/{}", auto, hasLeadSolution, canFireWithoutLead, yawPitchOk, safeOk, cannonReady, stableOk, fireController != null, target, offsetAim, offset, aimStableTicks, AIM_STABLE_REQUIRED);
             if (!yawPitchOk) {
-                LOGGER.warn("WFC AIMCHK: yawCtrl={} pitchCtrl={} atYaw={} atPitch={} targYaw={} targPitch={}", yawController != null ? yawController.getBlockPos() : null, pitchController != null ? pitchController.getBlockPos() : null, yawController != null && yawController.atTargetYaw(lag), pitchController != null && pitchController.atTargetPitch(lag), yawController != null ? yawController.getTargetAngle() : null, pitchController != null ? pitchController.getTargetAngle() : null);
+                LOGGER.debug("Aim check: yawCtrl={} pitchCtrl={} atYaw={} atPitch={} targYaw={} targPitch={}", yawController != null ? yawController.getBlockPos() : null, pitchController != null ? pitchController.getBlockPos() : null, yawController != null && yawController.atTargetYaw(lag), pitchController != null && pitchController.atTargetPitch(lag), yawController != null ? yawController.getTargetAngle() : null, pitchController != null ? pitchController.getTargetAngle() : null);
             }
-            if (!auto) LOGGER.warn("WFC BLOCK: autoFire disabled");
-            if (!hasLeadSolution && !canFireWithoutLead) LOGGER.warn("WFC BLOCK: no lead solution");
-            if (!safeOk) LOGGER.warn("WFC BLOCK: safe zone violation");
-            if (!cannonReady) LOGGER.warn("WFC BLOCK: cannon not ready");
-            if (!yawPitchOk) LOGGER.warn("WFC BLOCK: yaw/pitch not aligned");
-            if (!stableOk) LOGGER.warn("WFC BLOCK: aim not stable");
+            if (!auto) LOGGER.debug("Firing blocked: auto-fire disabled");
+            if (!hasLeadSolution && !canFireWithoutLead) LOGGER.debug("Firing blocked: no lead solution");
+            if (!safeOk) LOGGER.debug("Firing blocked: safe zone violation");
+            if (!cannonReady) LOGGER.debug("Firing blocked: cannon not ready");
+            if (!yawPitchOk) LOGGER.debug("Firing blocked: yaw/pitch not aligned");
+            if (!stableOk) LOGGER.debug("Firing blocked: aim not stable");
         }
 
         boolean shouldFire =
@@ -909,7 +909,7 @@ public class WeaponFiringControl {
     }
 
     public void setTarget(Vec3 target, TargetingConfig config, RadarTrack track, WeaponNetworkData.WeaponGroupView view){
-        LOGGER.warn("setTarget() 鈫?new target={} config={} atTick={}",
+        LOGGER.debug("Set target: target={} config={} atTick={}",
                 target, config, level != null ? level.getGameTime() : -1L);
         if (target == null || (track != null && !track.isWeaponTargetable())) {
             this.target = null;
@@ -999,7 +999,7 @@ public class WeaponFiringControl {
     private void tryFireCannon() {
         if(this.fireController == null) return;
         fireController.setPowered(true);
-        LOGGER.debug("firing!");
+        LOGGER.debug("Firing cannon via fire controller");
 
     }
 

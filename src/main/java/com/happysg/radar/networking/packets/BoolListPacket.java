@@ -2,6 +2,7 @@ package com.happysg.radar.networking.packets;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.utils.ItemNbt;
+import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -13,8 +14,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.slf4j.Logger;
 
 public class BoolListPacket implements CustomPacketPayload {
+    private static final Logger LOGGER = LogUtils.getLogger();
     public static final Type<BoolListPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(CreateRadar.MODID, "bool_list"));
     public static final StreamCodec<RegistryFriendlyByteBuf, BoolListPacket> STREAM_CODEC =
@@ -111,7 +114,7 @@ public class BoolListPacket implements CustomPacketPayload {
                 player.inventoryMenu.broadcastChanges();
 
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.warn("Failed to apply filter settings packet", ex);
             }
         });
     }

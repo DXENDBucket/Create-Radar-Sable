@@ -4,15 +4,15 @@ This repository contains EndX WaterBucket's 1.21.1 NeoForge remake of Create: Ra
 
 The remake focuses on bringing the original Create: Radars experience forward to Minecraft 1.21.1 on NeoForge while preserving the existing gameplay behavior as closely as possible.
 
-## Status
+## Target Versions
 
-This is an in-progress port/remake for:
+This release targets:
 
 - Minecraft 1.21.1
-- NeoForge 21.1.x
-- Create 6.0.x
+- NeoForge 21.1.227 or newer 21.1.x builds
+- Create 6.0.10
 
-Expect compatibility fixes and refactors while the port is stabilized.
+Create Big Cannons support is included for the 1.21.1 NeoForge builds used during testing. Sable compatibility is optional and only active when Sable is installed.
 
 ## Features
 
@@ -23,13 +23,15 @@ Expect compatibility fixes and refactors while the port is stabilized.
 
 ## Installation
 
-Download a jar from this repository's GitHub Releases or build it locally with:
+Download a jar from Modrinth or this repository's GitHub Releases, then place it into your Minecraft `mods` folder.
+
+To build locally:
 
 ```sh
 ./gradlew build
 ```
 
-Place the generated jar from `build/libs/` into your Minecraft `mods` folder.
+The generated jar will be in `build/libs/`.
 
 ## Attribution
 

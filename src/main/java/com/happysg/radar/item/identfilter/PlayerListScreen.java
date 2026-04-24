@@ -94,12 +94,7 @@ public class PlayerListScreen extends AbstractSimiScreen {
     }
 
     private void handleScroll(float percent) {
-        // System.out.println("Scroll changed: " + percent);
-        //System.out.println("New startIndex: " + startIndex);
-        //System.out.println("Visible entries: " + entries.subList(startIndex, Math.min(entries.size(), startIndex + MAX_VISIBLE)));
-
-
-        int scrollThreshold = MAX_VISIBLE - 1; // Scroll when more than 2
+        int scrollThreshold = MAX_VISIBLE - 1;
         int entryCount = entries.size();
 
         if (entryCount <= scrollThreshold) {

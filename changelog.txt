@@ -1,11 +1,21 @@
-ChangeLog
+Changelog
 =========
 
-Version .2---------
--added config
--added Radar Links
--------------------
+Version 0.4
+-----------
+- Ported Create: Radars to Minecraft 1.21.1 on NeoForge 21.1.x.
+- Restored radar multiblocks, monitor displays, data links, filters, and weapon-network control flow.
+- Added Create Big Cannons targeting/firing compatibility for the current 1.21.1 test environment.
+- Added optional Sable physical-structure radar tracking, monitor display, filtering, and targeting support.
+- Added Chinese localization updates for restored UI and config text.
+- Hid unfinished legacy placeholder blocks/items from the creative tab.
+- Removed Discord/legacy project metadata and refreshed repository links for the remake.
 
-Version .1----------
--Initial release
---------------------
+Version 0.2
+-----------
+- Added config support.
+- Added radar links.
+
+Version 0.1
+-----------
+- Initial release.

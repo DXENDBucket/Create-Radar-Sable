@@ -326,7 +326,7 @@ public class CannonLead {
             Vec3 aimRel = relPos0.add(relVel.scale(tGuessTicks));
             aimPoint = shooterPosAtFire.add(aimRel);
 
-            // Yaw in XZ plane from shooter at fire 鈫?predicted point
+            // Yaw in XZ plane from shooter at fire to predicted point
             Vec3 toPred = aimPoint.subtract(shooterPosAtFire);
             chosenYawRad = Math.atan2(toPred.z, toPred.x);
 
@@ -419,7 +419,7 @@ public class CannonLead {
             directionalLead = leadVec.dot(targetVelPerTick.normalize());
         }
 
-        LOGGER.warn("Lead debug 鈫?totalLead={} directionalLead={} leadVec={} targetVelPerTick={}",
+        LOGGER.debug("Lead debug: totalLead={} directionalLead={} leadVec={} targetVelPerTick={}",
                 totalLead, directionalLead, leadVec, targetVelPerTick);
     }
 }
