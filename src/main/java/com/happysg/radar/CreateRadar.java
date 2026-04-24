@@ -17,6 +17,7 @@ import com.happysg.radar.networking.NetworkHandler;
 import com.happysg.radar.registry.*;
 
 import com.mojang.logging.LogUtils;
+import com.simibubi.create.api.registry.CreateBuiltInRegistries;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.api.stress.BlockStressValues;
 
@@ -34,6 +35,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.registries.RegisterEvent;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -78,6 +80,7 @@ public class CreateRadar {
         ModPartials.init();
         RadarConfig.register(container);
         modEventBus.addListener(NetworkHandler::register);
+        modEventBus.addListener(CreateRadar::register);
         modEventBus.addListener(CreateRadar::init);
         modEventBus.addListener(CreateRadar::clientInit);
         modEventBus.addListener(CreateRadar::onLoadComplete);
@@ -124,6 +127,11 @@ public class CreateRadar {
         NeoForge.EVENT_BUS.addListener(MonitorInputHandler::monitorPlayerHovering);
     }
 
+    public static void register(final RegisterEvent event) {
+        if (event.getRegistry() == CreateBuiltInRegistries.CONTRAPTION_TYPE) {
+            ModContraptionTypes.register();
+        }
+    }
 
 
     public static void onLoadComplete(FMLLoadCompleteEvent event) {
@@ -133,8 +141,6 @@ public class CreateRadar {
     public static void init(final FMLCommonSetupEvent event) {
 
         event.enqueueWork(() -> {
-            // Must be registered after registries open
-            ModContraptionTypes.register();
             // Stress values
             BlockStressValues.IMPACTS.register(ModBlocks.RADAR_BEARING_BLOCK.get(), () -> 4d);
             BlockStressValues.IMPACTS.register(ModBlocks.AUTO_YAW_CONTROLLER_BLOCK.get(), () -> 64);

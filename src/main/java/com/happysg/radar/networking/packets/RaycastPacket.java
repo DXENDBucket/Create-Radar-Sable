@@ -31,8 +31,6 @@ public class RaycastPacket implements CustomPacketPayload {
     public static final StreamCodec<RegistryFriendlyByteBuf, RaycastPacket> STREAM_CODEC =
             StreamCodec.of((buf, pkt) -> encode(pkt, buf), RaycastPacket::decode);
 
-    // tune these however you want
-    private static final double MAX_DISTANCE = RadarConfig.server().binoRaycastRange.get();
     private static final double STEP = 0.25;
 
     public RaycastPacket() {}
@@ -53,7 +51,8 @@ public class RaycastPacket implements CustomPacketPayload {
 
             if (!(player.getUseItem().getItem() instanceof Binoculars)) return;
 
-            BlockPos hit = raycastFirstNonTransparentBlock(serverLevel, player, MAX_DISTANCE, STEP);
+            double maxDistance = RadarConfig.server().binoRaycastRange.get();
+            BlockPos hit = raycastFirstNonTransparentBlock(serverLevel, player, maxDistance, STEP);
 
             if (hit != null) {
                 Binoculars.setLastHit(player.getUseItem(), hit);

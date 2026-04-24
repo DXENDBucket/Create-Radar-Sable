@@ -42,6 +42,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.common.util.TriState;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlock;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.fixed_cannon_mount.FixedCannonMountBlock;
@@ -52,6 +53,7 @@ import net.arsenalists.createenergycannons.content.energymount.EnergyCannonMount
 
 import javax.annotation.Nullable;
 
+@EventBusSubscriber(modid = CreateRadar.MODID)
 public class DataLinkBlockItem extends BlockItem {
 
     public DataLinkBlockItem(Block pBlock, Properties pProperties) {
@@ -80,15 +82,6 @@ public class DataLinkBlockItem extends BlockItem {
 
         if (player == null)
             return InteractionResult.FAIL;
-
-        // Shift-click clears any in-progress selection
-        if (player.isShiftKeyDown() && ItemNbt.hasTag(stack)) {
-            if (!level.isClientSide) {
-                player.displayClientMessage(Component.translatable("display_link.clear"), true);
-                ItemNbt.setTag(stack, null);
-            }
-            return InteractionResult.SUCCESS;
-        }
 
         CompoundTag tag = ItemNbt.getOrCreateTag(stack);
         var be = level.getBlockEntity(clickedPos);
@@ -133,9 +126,22 @@ public class DataLinkBlockItem extends BlockItem {
             return InteractionResult.SUCCESS;
         }
 
-
-
         ControllerType controllerType = getControllerType(be, clickedState);
+        FilterTarget filterTarget = getFilterTarget(be, clickedState);
+
+        // Sneak-placing onto interactive targets should still work.
+        if (player.isShiftKeyDown() && ItemNbt.hasTag(stack)) {
+            boolean canCompleteMountLink = controllerType != null && tag.contains("SelectedMountPos");
+            boolean canCompleteFilterLink = filterTarget != null && tag.contains("SelectedFiltererPos");
+            if (!canCompleteMountLink && !canCompleteFilterLink) {
+                if (!level.isClientSide) {
+                    player.displayClientMessage(Component.translatable("display_link.clear"), true);
+                    ItemNbt.setTag(stack, null);
+                }
+                return InteractionResult.SUCCESS;
+            }
+        }
+
         if (controllerType != null && tag.contains("SelectedMountPos")) {
 
 
@@ -250,7 +256,7 @@ public class DataLinkBlockItem extends BlockItem {
 
         if (tag.contains("SelectedFiltererPos")) {
             // Determine allowed target type
-            FilterTarget target = getFilterTarget(be, clickedState);
+            FilterTarget target = filterTarget;
 
             if (target == null) {
                 if (!level.isClientSide) {
@@ -272,13 +278,14 @@ public class DataLinkBlockItem extends BlockItem {
 
             BlockPos filtererPos = NbtCompat.readBlockPos(tag, "SelectedFiltererPos");
             if (filtererPos == null) return InteractionResult.FAIL;
+            BlockPos endpointPos = normalizeFilterEndpoint(serverLevel, clickedPos, target);
 
             // adjacent to target on clicked face
             BlockPos placedPos = clickedPos.relative(ctx.getClickedFace(), clickedState.canBeReplaced() ? 0 : 1);
 
             //  filterer + target must reach datalink
             double range = RadarConfig.server().radarLinkRange.get();
-            if (!withinRange(level, placedPos, filtererPos, range) || !withinRange(level, placedPos, clickedPos, range)) {
+            if (!withinRange(level, placedPos, filtererPos, range) || !withinRange(level, placedPos, endpointPos, range)) {
                 player.displayClientMessage(
                         Component.translatable("display_link.too_far").withStyle(ChatFormatting.RED),
                         true
@@ -295,9 +302,9 @@ public class DataLinkBlockItem extends BlockItem {
             BlockPos weaponMountPos = null;
 
             switch (target.kind) {
-                case MONITOR -> canAttach = filterData.canAttachMonitor(fGroup, clickedPos);
+                case MONITOR -> canAttach = filterData.canAttachMonitor(fGroup, endpointPos);
 
-                case RADAR_BEARING -> canAttach = filterData.canAttachRadar(fGroup, clickedPos, NetworkData.RadarKind.BEARING);
+                case RADAR_BEARING -> canAttach = filterData.canAttachRadar(fGroup, endpointPos, NetworkData.RadarKind.BEARING);
 
                 case CONTROLLER -> {
                     if (!(be instanceof AutoPitchControllerBlockEntity)) {
@@ -312,7 +319,7 @@ public class DataLinkBlockItem extends BlockItem {
 
                     // // Controller MUST already belong to a weapon group for filter networks
                     WeaponNetworkData weaponData = WeaponNetworkData.get(serverLevel);
-                    weaponMountPos = weaponData.getMountForController(serverLevel.dimension(), clickedPos);
+                    weaponMountPos = weaponData.getMountForController(serverLevel.dimension(), endpointPos);
                     if (weaponMountPos == null) {
                         player.displayClientMessage(
                                 Component.translatable(CreateRadar.MODID + ".data_link.controller_no_weapon_group")
@@ -323,7 +330,7 @@ public class DataLinkBlockItem extends BlockItem {
                         return InteractionResult.FAIL;
                     }
 
-                    canAttach = filterData.canAttachWeaponEndpoint(fGroup, clickedPos, weaponMountPos);
+                    canAttach = filterData.canAttachWeaponEndpoint(fGroup, endpointPos, weaponMountPos);
                 }
 
 
@@ -367,17 +374,10 @@ public class DataLinkBlockItem extends BlockItem {
 
             // Commit after placement
             switch (target.kind) {
-                case MONITOR -> {
-                    BlockPos pos = clickedPos;
-                    BlockEntity mbe = serverLevel.getBlockEntity(clickedPos);
-                    if (mbe instanceof MonitorBlockEntity m) {
-                        pos = m.getControllerPos();
-                    }
-                    filterData.attachMonitor(serverLevel,fGroup, pos);
-                }
+                case MONITOR -> filterData.attachMonitor(serverLevel, fGroup, endpointPos);
 
                 case RADAR_BEARING -> {
-                    filterData.attachRadar(fGroup, clickedPos, NetworkData.RadarKind.BEARING);
+                    filterData.attachRadar(fGroup, endpointPos, NetworkData.RadarKind.BEARING);
 
                     BlockEntity fbe = serverLevel.getBlockEntity(filtererPos);
                     if (fbe instanceof com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity nfb) {
@@ -385,10 +385,10 @@ public class DataLinkBlockItem extends BlockItem {
                     }
                 }
 
-                case CONTROLLER -> filterData.attachWeaponEndpoint(fGroup, clickedPos, weaponMountPos);
+                case CONTROLLER -> filterData.attachWeaponEndpoint(fGroup, endpointPos, weaponMountPos);
             }
 
-            filterData.addDataLinkToGroup(fGroup, placedPos,clickedPos); // Might be issue later
+            filterData.addDataLinkToGroup(fGroup, placedPos, endpointPos);
 
             player.displayClientMessage(
                     Component.translatable("display_link.success").withStyle(ChatFormatting.GREEN),
@@ -483,6 +483,22 @@ public class DataLinkBlockItem extends BlockItem {
         if (getControllerType(be, state) != null) return new FilterTarget(FilterTargetKind.CONTROLLER);
 
         return null;
+    }
+
+    private static BlockPos normalizeFilterEndpoint(Level level, BlockPos clickedPos, FilterTarget target) {
+        if (target.kind != FilterTargetKind.MONITOR) {
+            return clickedPos;
+        }
+
+        BlockEntity be = level.getBlockEntity(clickedPos);
+        if (be instanceof MonitorBlockEntity monitor) {
+            BlockPos controllerPos = monitor.getControllerPos();
+            if (controllerPos != null) {
+                return controllerPos;
+            }
+        }
+
+        return clickedPos;
     }
 
     private static void clearControllersKeepMount(ItemStack stack) {

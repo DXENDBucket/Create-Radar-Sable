@@ -8,7 +8,6 @@ import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.config.RadarConfig;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.logging.LogUtils;
 import com.mojang.math.Axis;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.client.Minecraft;
@@ -19,6 +18,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
@@ -43,12 +43,15 @@ public class MonitorScreen extends Screen {
     private static final float ALPHA_BACKGROUND = 0.6f;
     private static final float ALPHA_GRID = 0.1f;
     private static final float ALPHA_SWEEP = 0.8f;
-    private static final int TARGET_BG =512;
-    // i treat 512px as the "design resolution" of the monitor ui
-    private static final int TARGET_UI_PX = 900;
+    private static final int PANEL_TEXTURE_SIZE = 48;
+    private static final int RADAR_TEXTURE_SIZE = 128;
+    private static final int TRACK_TEXTURE_SIZE = 256;
+    private static final int TRACK_MARKER_BASE_PX = 18;
+    private static final float SCREEN_SIZE_FRACTION = 0.68f;
+    private static final int MIN_UI_SIZE = 220;
+    private static final int MAX_UI_SIZE = 340;
     private static final int GRID_MARGIN_PX = 21;
 
-    // i store the current ui size in gui units, and a scale factor relative to the old 512 design
     private int uiSize;
     private float uiScale;
 
@@ -86,17 +89,10 @@ public class MonitorScreen extends Screen {
     }
 
     private void recalcUiScale() {
-        Minecraft mc = Minecraft.getInstance();
-
-        double s = mc.getWindow().getGuiScale();
-        if (s <= 0) s = 1;
-
-        uiSize = (int) Math.round(TARGET_UI_PX / s);
-
-        int max = Math.min(this.width, this.height) - 20;
-        uiSize = Mth.clamp(uiSize, 120, Math.max(120, max));
-
-        uiScale = uiSize / 512f;
+        int viewport = Math.min(this.width, this.height);
+        int desired = Math.round(viewport * SCREEN_SIZE_FRACTION);
+        uiSize = Mth.clamp(desired, MIN_UI_SIZE, Math.min(MAX_UI_SIZE, Math.max(MIN_UI_SIZE, viewport - 20)));
+        uiScale = uiSize / 320f;
     }
 
     @Override
@@ -139,18 +135,8 @@ public class MonitorScreen extends Screen {
 
     private void drawPanelBackground(GuiGraphics gg) {
         RenderSystem.enableBlend();
-
-        // i draw the background using the same uiSize the rest of the screen uses
-        gg.blit(
-                CreateRadar.asResource("textures/gui/monitor_gui.png"),
-                left,
-                top,
-                0, 0,
-                uiSize,   // destination width
-                uiSize,   // destination height
-                uiSize,uiSize  // actual texture size in pixels
-        );
-
+        blitScaledTexture(gg, CreateRadar.asResource("textures/gui/monitor_gui.png"),
+                left, top, uiSize, uiSize, PANEL_TEXTURE_SIZE, PANEL_TEXTURE_SIZE);
         RenderSystem.disableBlend();
     }
 
@@ -163,14 +149,11 @@ public class MonitorScreen extends Screen {
 
         int totalCells = halfCells * 2;
 
-        int margin = Math.round(GRID_MARGIN_PX * uiScale);
-
-        int gridLeft = left + margin;
-        int gridTop = top + margin;
-        int gridRight = left + uiSize - margin;
-        int gridBottom = top + uiSize - margin;
-
-        int gridSizePx = gridRight - gridLeft;
+        int gridLeft = getRadarLeft();
+        int gridTop = getRadarTop();
+        int gridSizePx = getRadarSize();
+        int gridRight = gridLeft + gridSizePx;
+        int gridBottom = gridTop + gridSizePx;
         float spacing = gridSizePx / (float) totalCells;
 
         Color color = new Color(RadarConfig.client().groundRadarColor.get());
@@ -198,7 +181,8 @@ public class MonitorScreen extends Screen {
 
         RenderSystem.enableBlend();
         gg.setColor(color.getRedAsFloat(), color.getGreenAsFloat(), color.getBlueAsFloat(), alpha);
-        gg.blit(sprite.getTexture(), left, top, 0, 0, uiSize, uiSize, uiSize, uiSize);
+        blitScaledTexture(gg, sprite.getTexture(), getRadarLeft(), getRadarTop(), getRadarSize(), getRadarSize(),
+                RADAR_TEXTURE_SIZE, RADAR_TEXTURE_SIZE);
         gg.setColor(1f, 1f, 1f, 1f);
         RenderSystem.disableBlend();
     }
@@ -239,7 +223,8 @@ public class MonitorScreen extends Screen {
         gg.pose().mulPose(Axis.ZP.rotationDegrees(-screenAngle));
         gg.pose().translate(-cx, -cy, 0);
 
-        gg.blit(MonitorSprite.RADAR_SWEEP.getTexture(), left, top, 0, 0, uiSize, uiSize, uiSize, uiSize);
+        blitScaledTexture(gg, MonitorSprite.RADAR_SWEEP.getTexture(), getRadarLeft(), getRadarTop(),
+                getRadarSize(), getRadarSize(), RADAR_TEXTURE_SIZE, RADAR_TEXTURE_SIZE);
 
         gg.pose().popPose();
 
@@ -319,8 +304,12 @@ public class MonitorScreen extends Screen {
             xOff *= TRACK_POSITION_SCALE;
             zOff *= TRACK_POSITION_SCALE;
 
-            int px = (int) (left + (0.5f + xOff) * uiSize);
-            int pz = (int) (top + (0.5f + zOff) * uiSize);
+            int radarLeft = getRadarLeft();
+            int radarTop = getRadarTop();
+            int radarSize = getRadarSize();
+
+            int px = radarLeft + Math.round((0.5f + xOff) * radarSize);
+            int pz = radarTop + Math.round((0.5f + zOff) * radarSize);
 
             long currentTime = monitor.getLevel().getGameTime();
             float age = currentTime - track.scannedTime();
@@ -332,21 +321,24 @@ public class MonitorScreen extends Screen {
 
             Color c = filter.getColor(track);
 
-            int spriteSize = Math.max(8, Math.round(256 * uiScale));
+            int spriteSize = getTrackMarkerSize();
             int sx = px - spriteSize / 2;
             int sy = pz - spriteSize / 2;
 
             RenderSystem.enableBlend();
             gg.setColor(c.getRedAsFloat(), c.getGreenAsFloat(), c.getBlueAsFloat(), alpha);
-            gg.blit(track.getSprite().getTexture(), sx, sy, 0, 0, spriteSize, spriteSize, spriteSize, spriteSize);
+            blitScaledTexture(gg, track.getSprite().getTexture(), sx, sy, spriteSize, spriteSize,
+                    TRACK_TEXTURE_SIZE, TRACK_TEXTURE_SIZE);
 
             if (track.id().equals(hoveredId)) {
                 gg.setColor(1f, 1f, 0f, alpha);
-                gg.blit(MonitorSprite.TARGET_HOVERED.getTexture(), sx, sy, 0, 0, spriteSize, spriteSize, spriteSize, spriteSize);
+                blitScaledTexture(gg, MonitorSprite.TARGET_HOVERED.getTexture(), sx, sy, spriteSize, spriteSize,
+                        TRACK_TEXTURE_SIZE, TRACK_TEXTURE_SIZE);
             }
             if (track.id().equals(monitor.selectedEntity)) {
                 gg.setColor(1f, 0f, 0f, alpha);
-                gg.blit(MonitorSprite.TARGET_SELECTED.getTexture(), sx, sy, 0, 0, spriteSize, spriteSize, spriteSize, spriteSize);
+                blitScaledTexture(gg, MonitorSprite.TARGET_SELECTED.getTexture(), sx, sy, spriteSize, spriteSize,
+                        TRACK_TEXTURE_SIZE, TRACK_TEXTURE_SIZE);
             }
 
             gg.setColor(1f, 1f, 1f, 1f);
@@ -377,7 +369,7 @@ public class MonitorScreen extends Screen {
     }
 
     private void updateHoverFromMouse(MonitorBlockEntity monitor, IRadar radar, int mouseX, int mouseY) {
-        if (mouseX < left || mouseX >= left + uiSize || mouseY < top || mouseY >= top + uiSize) {
+        if (!isMouseOverRadar(mouseX, mouseY)) {
             hoveredId = null;
             return;
         }
@@ -391,7 +383,10 @@ public class MonitorScreen extends Screen {
         float range = radar.getRange();
         var facing = monitor.getBlockState().getValue(MonitorBlock.FACING);
 
-        int spriteSize = Math.max(6, Math.round(20 * uiScale));
+        int radarLeft = getRadarLeft();
+        int radarTop = getRadarTop();
+        int radarSize = getRadarSize();
+        int spriteSize = getTrackMarkerSize();
         float pickRadius = spriteSize * 0.75f;
         float bestDist2 = pickRadius * pickRadius;
 
@@ -409,8 +404,8 @@ public class MonitorScreen extends Screen {
             xOff *= TRACK_POSITION_SCALE;
             zOff *= TRACK_POSITION_SCALE;
 
-            int px = (int) (left + (0.5f + xOff) * uiSize);
-            int py = (int) (top + (0.5f + zOff) * uiSize);
+            int px = radarLeft + Math.round((0.5f + xOff) * radarSize);
+            int py = radarTop + Math.round((0.5f + zOff) * radarSize);
 
             float dx = mouseX - px;
             float dy = mouseY - py;
@@ -451,7 +446,40 @@ public class MonitorScreen extends Screen {
     }
 
     private boolean isMouseOverRadar(int mx, int my) {
-        return mx >= left && mx < left + uiSize && my >= top && my < top + uiSize;
+        return mx >= getRadarLeft() && mx < getRadarLeft() + getRadarSize()
+                && my >= getRadarTop() && my < getRadarTop() + getRadarSize();
+    }
+
+    private int getRadarMargin() {
+        return Math.round(GRID_MARGIN_PX * uiScale);
+    }
+
+    private int getRadarLeft() {
+        return left + getRadarMargin();
+    }
+
+    private int getRadarTop() {
+        return top + getRadarMargin();
+    }
+
+    private int getRadarSize() {
+        return Math.max(16, uiSize - getRadarMargin() * 2);
+    }
+
+    private int getTrackMarkerSize() {
+        return Math.max(10, Math.round(TRACK_MARKER_BASE_PX * uiScale));
+    }
+
+    private void blitScaledTexture(GuiGraphics gg, ResourceLocation texture,
+                                   int x, int y, int drawWidth, int drawHeight,
+                                   int textureWidth, int textureHeight) {
+        Minecraft.getInstance().getTextureManager().getTexture(texture).setFilter(false, false);
+        var pose = gg.pose();
+        pose.pushPose();
+        pose.translate(x, y, 0);
+        pose.scale(drawWidth / (float) textureWidth, drawHeight / (float) textureHeight, 1f);
+        gg.blit(texture, 0, 0, 0, 0, textureWidth, textureHeight, textureWidth, textureHeight);
+        pose.popPose();
     }
 
     private MonitorBlockEntity getController() {

@@ -57,36 +57,38 @@ public class ModCreativeTabs {
     }
 
     private static void displayItems(CreativeModeTab.ItemDisplayParameters pParameters, CreativeModeTab.Output pOutput) {
-        pOutput.accept(ModBlocks.MONITOR);
-        pOutput.accept(ModItems.SAFE_ZONE_DESIGNATOR);
-        pOutput.accept(ModBlocks.RADAR_LINK);
-        pOutput.accept(ModBlocks.RADAR_BEARING_BLOCK);
-        pOutput.accept(ModBlocks.RADAR_RECEIVER_BLOCK);
-        pOutput.accept(ModBlocks.RADAR_PLATE_BLOCK);
-        pOutput.accept(ModBlocks.RADAR_DISH_BLOCK);
-        pOutput.accept(ModBlocks.CREATIVE_RADAR_PLATE_BLOCK);
-        pOutput.accept(ModBlocks.AUTO_YAW_CONTROLLER_BLOCK);
-        pOutput.accept(ModBlocks.AUTO_PITCH_CONTROLLER_BLOCK);
-        pOutput.accept(ModBlocks.NETWORK_FILTERER_BLOCK);
-        pOutput.accept(ModBlocks.FIRE_CONTROLLER_BLOCK);
-        pOutput.accept(ModBlocks.RADOME);
-        pOutput.accept(ModBlocks.SMART_MOUNT);
-        pOutput.accept(ModBlocks.SKY_RADAR);
-        pOutput.accept(ModBlocks.SIREN);
-        pOutput.accept(ModBlocks.SONAR_BEARING);
-        pOutput.accept(ModBlocks.SONAR_PANEL);
-        pOutput.accept(ModItems.IDENT_FILTER_ITEM);
-        pOutput.accept(ModItems.RADAR_FILTER_ITEM);
-        pOutput.accept(ModItems.TARGET_FILTER_ITEM);
-        pOutput.accept(ModItems.BINOCULARS);
-        pOutput.accept(ModItems.RADAR_GOGGLES);
-        pOutput.accept(ModItems.ARTILLERY_RADIO);
-        pOutput.accept(ModBlocks.SHIELD_JAMMER);
+        // Registrate already contributes these items to the global search tab.
+        // Restrict our custom tab entries to the parent tab to avoid duplicate search entries.
+        pOutput.accept(ModBlocks.MONITOR, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModItems.SAFE_ZONE_DESIGNATOR, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.RADAR_LINK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.RADAR_BEARING_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.RADAR_RECEIVER_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.RADAR_PLATE_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.RADAR_DISH_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.CREATIVE_RADAR_PLATE_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.AUTO_YAW_CONTROLLER_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.AUTO_PITCH_CONTROLLER_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.NETWORK_FILTERER_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.FIRE_CONTROLLER_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.RADOME, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.SMART_MOUNT, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.SKY_RADAR, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.SIREN, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.SONAR_BEARING, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.SONAR_PANEL, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModItems.IDENT_FILTER_ITEM, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModItems.RADAR_FILTER_ITEM, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModItems.TARGET_FILTER_ITEM, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModItems.BINOCULARS, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModItems.RADAR_GOGGLES, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModItems.ARTILLERY_RADIO, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        pOutput.accept(ModBlocks.SHIELD_JAMMER, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
 
 
 
         if (Mods.CBCMODERNWARFARE.isLoaded()) {
-            pOutput.accept(CBCMWCompatRegister.RADAR_GUIDANCE_BLOCK);
+            pOutput.accept(CBCMWCompatRegister.RADAR_GUIDANCE_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
         }
     }
 

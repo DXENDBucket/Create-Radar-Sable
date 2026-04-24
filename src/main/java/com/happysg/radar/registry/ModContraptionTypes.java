@@ -13,6 +13,10 @@ public class ModContraptionTypes {
     public static ContraptionType RADAR_BEARING;
 
     public static void register() {
+        if (RADAR_BEARING != null) {
+            return;
+        }
+
         RADAR_BEARING = new ContraptionType(RadarContraption::new);
 
         ResourceLocation id = CreateRadar.asResource("radar_bearing");
