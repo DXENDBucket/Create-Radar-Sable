@@ -17,6 +17,7 @@ import net.neoforged.fml.ModList;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -40,9 +41,11 @@ public final class SableRadarCompat {
     private static Method getContainer;
     private static Method getContainerForLevel;
     private static Method getAllSubLevels;
+    private static Method getAllIntersecting;
     private static Method projectOutOfSubLevel;
     private static Method getContaining;
     private static Method getVelocityAt;
+    private static Constructor<?> boundingBox3dFromAabb;
 
     private SableRadarCompat() {
     }
@@ -289,15 +292,13 @@ public final class SableRadarCompat {
                 return tracks;
             }
 
-            Object all = getAllSubLevels.invoke(container);
-            if (!(all instanceof Iterable<?> subLevels)) {
-                return tracks;
-            }
+            boolean sawCandidate = addSubLevelTracks(level, queryIntersectingSubLevels(level, scanBox), scanBox,
+                    ignoredSubLevelId, positionFilter, scannedTime, tracks);
 
-            for (Object subLevel : subLevels) {
-                RadarTrack track = createTrack(level, subLevel, scanBox, ignoredSubLevelId, positionFilter, scannedTime);
-                if (track != null) {
-                    tracks.add(track);
+            if (!sawCandidate) {
+                Object all = getAllSubLevels.invoke(container);
+                if (all instanceof Iterable<?> subLevels) {
+                    addSubLevelTracks(level, subLevels, scanBox, ignoredSubLevelId, positionFilter, scannedTime, tracks);
                 }
             }
         } catch (Throwable throwable) {
@@ -305,6 +306,43 @@ public final class SableRadarCompat {
         }
 
         return tracks;
+    }
+
+    private static boolean addSubLevelTracks(ServerLevel level, @Nullable Iterable<?> subLevels, AABB scanBox,
+                                             @Nullable String ignoredSubLevelId, Predicate<Vec3> positionFilter,
+                                             long scannedTime, List<RadarTrack> tracks) {
+        if (subLevels == null) {
+            return false;
+        }
+
+        boolean sawCandidate = false;
+        for (Object subLevel : subLevels) {
+            sawCandidate = true;
+            RadarTrack track = createTrack(level, subLevel, scanBox, ignoredSubLevelId, positionFilter, scannedTime);
+            if (track != null) {
+                tracks.add(track);
+            }
+        }
+        return sawCandidate;
+    }
+
+    @Nullable
+    private static Iterable<?> queryIntersectingSubLevels(ServerLevel level, AABB scanBox) {
+        if (getAllIntersecting == null || boundingBox3dFromAabb == null) {
+            return null;
+        }
+
+        try {
+            Object queryBox = boundingBox3dFromAabb.newInstance(scanBox);
+            Object result = getAllIntersecting.invoke(companion, level, queryBox);
+            if (result instanceof Iterable<?> iterable) {
+                return iterable;
+            }
+        } catch (Throwable throwable) {
+            LOGGER.debug("Failed to query intersecting Sable sub-levels for {}", scanBox, throwable);
+        }
+
+        return null;
     }
 
     public static List<AABB> collectEntityCandidateBoxes(ServerLevel level, AABB worldScanBox, Vec3 localScanCenter,
@@ -437,17 +475,61 @@ public final class SableRadarCompat {
             return null;
         }
 
+        AABB rawBox = getSubLevelRawAabb(subLevel);
+        AABB projectedBox = rawBox == null ? null : projectAabbToWorld(level, rawBox);
+
         Vec3 rawPosition = getSubLevelCenter(subLevel);
-        Vec3 position = rawPosition == null ? null : projectToWorld(level, rawPosition);
-        if (position == null || !scanBox.contains(position) || !positionFilter.test(position)) {
+        Vec3 position = pickTrackPosition(level, rawPosition, projectedBox, scanBox, positionFilter);
+        if (position == null) {
             return null;
         }
 
         Vec3 velocity = getVelocity(level, rawPosition);
-        float height = (float) Math.max(1.0, getSubLevelHeight(subLevel));
+        float height = (float) Math.max(1.0, projectedBox == null ? getSubLevelHeight(subLevel) : projectedBox.getYsize());
         String name = getSubLevelName(subLevel);
 
         return RadarTrack.sableSubLevel(TRACK_ID_PREFIX + rawId, position, velocity, scannedTime, name, height);
+    }
+
+    @Nullable
+    private static Vec3 pickTrackPosition(Level level, @Nullable Vec3 rawCenter, @Nullable AABB projectedBox,
+                                          AABB scanBox, Predicate<Vec3> positionFilter) {
+        Vec3 projectedCenter = rawCenter == null ? null : projectToWorld(level, rawCenter);
+        if (isAcceptedTrackPosition(projectedCenter, scanBox, positionFilter)) {
+            return projectedCenter;
+        }
+
+        if (projectedBox == null || !projectedBox.intersects(scanBox)) {
+            return null;
+        }
+
+        Vec3 nearestVisiblePoint = closestPoint(projectedBox, scanBox.getCenter());
+        if (isAcceptedTrackPosition(nearestVisiblePoint, scanBox, positionFilter)) {
+            return nearestVisiblePoint;
+        }
+
+        Vec3 projectedBoxCenter = projectedBox.getCenter();
+        if (isAcceptedTrackPosition(projectedBoxCenter, scanBox, positionFilter)) {
+            return projectedBoxCenter;
+        }
+
+        return null;
+    }
+
+    private static boolean isAcceptedTrackPosition(@Nullable Vec3 position, AABB scanBox, Predicate<Vec3> positionFilter) {
+        return position != null && scanBox.contains(position) && positionFilter.test(position);
+    }
+
+    private static Vec3 closestPoint(AABB box, Vec3 point) {
+        return new Vec3(
+                clamp(point.x, box.minX, box.maxX),
+                clamp(point.y, box.minY, box.maxY),
+                clamp(point.z, box.minZ, box.maxZ)
+        );
+    }
+
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     @Nullable
@@ -807,6 +889,8 @@ public final class SableRadarCompat {
         try {
             subLevelContainerClass = Class.forName("dev.ryanhcode.sable.api.sublevel.SubLevelContainer");
             Class<?> companionClass = Class.forName("dev.ryanhcode.sable.companion.SableCompanion");
+            Class<?> boundingBox3dcClass = Class.forName("dev.ryanhcode.sable.companion.math.BoundingBox3dc");
+            Class<?> boundingBox3dClass = Class.forName("dev.ryanhcode.sable.companion.math.BoundingBox3d");
 
             Field instance = companionClass.getField("INSTANCE");
             companion = instance.get(null);
@@ -814,9 +898,11 @@ public final class SableRadarCompat {
             getContainer = subLevelContainerClass.getMethod("getContainer", ServerLevel.class);
             getContainerForLevel = subLevelContainerClass.getMethod("getContainer", Level.class);
             getAllSubLevels = subLevelContainerClass.getMethod("getAllSubLevels");
+            getAllIntersecting = companionClass.getMethod("getAllIntersecting", Level.class, boundingBox3dcClass);
             projectOutOfSubLevel = companionClass.getMethod("projectOutOfSubLevel", Level.class, Vec3.class);
             getContaining = companionClass.getMethod("getContaining", Level.class, Position.class);
             getVelocityAt = companionClass.getMethod("getVelocity", Level.class, Vec3.class);
+            boundingBox3dFromAabb = boundingBox3dClass.getConstructor(AABB.class);
 
             available = companion != null;
             if (available) {
