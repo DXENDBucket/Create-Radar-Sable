@@ -124,6 +124,7 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         int size = blockEntity.getSize();
         float range = radar.getRange();
         Direction facing = blockEntity.getBlockState().getValue(MonitorBlock.FACING);
+        DisplayAxes axes = getDisplayAxes(blockEntity, facing);
         
         Matrix4f m = ms.last().pose();
         Matrix3f n = ms.last().normal();
@@ -132,9 +133,13 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
 
         // Render each safe zone
         for (AABB zone : safeZones) {
-            // Transform zone coordinates to display coordinates
-            Vec3 zoneMin = transformWorldToRadar(zone.minX, zone.minY, zone.minZ, radar, blockEntity, facing, range, size);
-            Vec3 zoneMax = transformWorldToRadar(zone.maxX, zone.maxY, zone.maxZ, radar, blockEntity, facing, range, size);
+            DisplayRect zoneRect = transformZoneToRadar(zone, blockEntity, axes, range, size);
+            if (zoneRect == null) {
+                continue;
+            }
+
+            Vec3 zoneMin = zoneRect.min();
+            Vec3 zoneMax = zoneRect.max();
 
             // Skip zones that are outside the display
             if (isOutsideDisplay(zoneMin) && isOutsideDisplay(zoneMax)) {
@@ -239,6 +244,7 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
                              PoseStack ms, MultiBufferSource bufferSource,
                              int depthMultiplier) {
         Direction monitorFacing = monitor.getBlockState().getValue(MonitorBlock.FACING);
+        DisplayAxes axes = getDisplayAxes(monitor, monitorFacing);
         float scale = radar.getRange();
         int size = monitor.getSize();
 
@@ -248,8 +254,8 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         }
         Vec3 relativePos = track.position().subtract(radarPos);
         // Transform to display coordinates
-        float xOff = calculateTrackOffset(relativePos, monitorFacing, scale, true);
-        float zOff = calculateTrackOffset(relativePos, monitorFacing, scale, false);
+        float xOff = calculateTrackOffset(relativePos, axes.xAxis(), scale);
+        float zOff = calculateTrackOffset(relativePos, axes.zAxis(), scale);
 
         // Skip tracks that are outside the display range
         if (Math.abs(xOff) > 0.5f || Math.abs(zOff) > 0.5f) {
@@ -316,35 +322,8 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
     /**
      * Calculates the offset for a track on the display
      */
-    private float calculateTrackOffset(Vec3 relativePos, Direction monitorFacing, float scale, boolean isXOffset) {
-        float offset;
-
-        if (isXOffset) {
-            offset = monitorFacing.getAxis() == Direction.Axis.Z ?
-                    getOffset(relativePos.x(), scale) : getOffset(relativePos.z(), scale);
-
-            // Flip offset based on facing direction
-            if (monitorFacing == Direction.NORTH || monitorFacing == Direction.EAST) {
-                offset = -offset;
-            }
-        } else {
-            offset = monitorFacing.getAxis() == Direction.Axis.Z ?
-                    getOffset(relativePos.z(), scale) : getOffset(relativePos.x(), scale);
-
-            // Flip offset based on facing direction
-            if (monitorFacing == Direction.NORTH || monitorFacing == Direction.WEST) {
-                offset = -offset;
-            }
-        }
-
-        return offset;
-    }
-
-    /**
-     * Converts a world coordinate to a proportional offset on the display
-     */
-    private float getOffset(double coordinate, float scale) {
-        return (float) (coordinate / scale) / 2f;
+    private float calculateTrackOffset(Vec3 relativePos, Vec3 monitorAxis, float scale) {
+        return (float) (relativePos.dot(monitorAxis) / scale) / 2f;
     }
 
     /**
@@ -357,24 +336,54 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
     /**
      * Transforms world coordinates to radar display coordinates
      */
-    private Vec3 transformWorldToRadar(double x, double y, double z, IRadar radar,
-                                       MonitorBlockEntity monitor, Direction facing,
-                                       float range, int size) {
+    private DisplayRect transformZoneToRadar(AABB zone, MonitorBlockEntity monitor, DisplayAxes axes,
+                                             float range, int size) {
         Vec3 radarPos = monitor.getRadarCenterPos();
         if (radarPos == null) {
-            return Vec3.ZERO;
+            return null;
         }
 
-        Vec3 worldPos = SableRadarCompat.projectToWorld(monitor.getLevel(), new Vec3(x, y, z));
+        double minX = Double.POSITIVE_INFINITY;
+        double minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxZ = Double.NEGATIVE_INFINITY;
+
+        for (Vec3 corner : getCorners(zone)) {
+            Vec3 displayPos = transformWorldToRadar(corner, monitor, radarPos, axes, range, size);
+            minX = Math.min(minX, displayPos.x);
+            minZ = Math.min(minZ, displayPos.z);
+            maxX = Math.max(maxX, displayPos.x);
+            maxZ = Math.max(maxZ, displayPos.z);
+        }
+
+        return new DisplayRect(new Vec3(minX, DEPTH_GRID, minZ), new Vec3(maxX, DEPTH_GRID, maxZ));
+    }
+
+    private Vec3 transformWorldToRadar(Vec3 position, MonitorBlockEntity monitor, Vec3 radarPos,
+                                       DisplayAxes axes, float range, int size) {
+        Vec3 worldPos = SableRadarCompat.projectToWorld(monitor.getLevel(), position);
         Vec3 relativePos = worldPos.subtract(radarPos);
 
-        float xOff = calculateTrackOffset(relativePos, facing, range, true) * TRACK_POSITION_SCALE;
-        float zOff = calculateTrackOffset(relativePos, facing, range, false) * TRACK_POSITION_SCALE;
+        float xOff = calculateTrackOffset(relativePos, axes.xAxis(), range) * TRACK_POSITION_SCALE;
+        float zOff = calculateTrackOffset(relativePos, axes.zAxis(), range) * TRACK_POSITION_SCALE;
 
         float displayX = 1 - size + (xOff * size);
         float displayZ = 1 - size + (zOff * size);
 
         return new Vec3(displayX, DEPTH_GRID, displayZ);
+    }
+
+    private Vec3[] getCorners(AABB box) {
+        return new Vec3[]{
+                new Vec3(box.minX, box.minY, box.minZ),
+                new Vec3(box.minX, box.minY, box.maxZ),
+                new Vec3(box.minX, box.maxY, box.minZ),
+                new Vec3(box.minX, box.maxY, box.maxZ),
+                new Vec3(box.maxX, box.minY, box.minZ),
+                new Vec3(box.maxX, box.minY, box.maxZ),
+                new Vec3(box.maxX, box.maxY, box.minZ),
+                new Vec3(box.maxX, box.maxY, box.maxZ)
+        };
     }
 
     /**
@@ -460,17 +469,7 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         float currentAngle;
         { // ground based spinning radar
             Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
-            // Global angle is already in world space; only align world-north to monitor.
-            Direction radarFacing   = Direction.NORTH;
-            ConeDir2D cone = getConeDirectionOnMonitor(monitorFacing, radarFacing);
-            switch (cone){
-                case NORTH -> currentAngle = 0 + radar.getGlobalAngle();
-                case DOWN -> currentAngle = 180 + radar.getGlobalAngle();
-                case LEFT -> currentAngle = 90 + radar.getGlobalAngle();
-                case RIGHT -> currentAngle = 270 + radar.getGlobalAngle();
-                default -> currentAngle = 30;
-            }
-
+            currentAngle = getScreenAngleForWorldYaw(controller, monitorFacing, radar.getGlobalAngle());
         }
 
         // Make sure we're working with normalized angles
@@ -569,6 +568,26 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         };
     }
 
+    private DisplayAxes getDisplayAxes(MonitorBlockEntity monitor, Direction monitorFacing) {
+        Vec3 origin = monitor.getBlockPos().getCenter();
+        Vec3 xAxis = SableRadarCompat.projectHorizontalDirectionToWorld(
+                monitor.getLevel(), origin, monitorFacing.getCounterClockWise());
+        Vec3 zAxis = SableRadarCompat.projectHorizontalDirectionToWorld(
+                monitor.getLevel(), origin, monitorFacing);
+        return new DisplayAxes(xAxis, zAxis);
+    }
+
+    private float getScreenAngleForWorldYaw(MonitorBlockEntity monitor, Direction monitorFacing, float worldYaw) {
+        Vec3 forwardAxis = getDisplayAxes(monitor, monitorFacing).zAxis();
+        float monitorForwardYaw = (float) Math.toDegrees(Math.atan2(forwardAxis.x, forwardAxis.z));
+        return normalizeDegrees(worldYaw + 180.0f - monitorForwardYaw);
+    }
+
+    private float normalizeDegrees(float degrees) {
+        float normalized = degrees % 360.0f;
+        return normalized < 0.0f ? normalized + 360.0f : normalized;
+    }
+
     private String getSlugForTrack(RadarTrack track, MonitorBlockEntity mon) {
         if (mon.getLevel() == null) return null;
 
@@ -630,6 +649,12 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         );
 
         ms.popPose();
+    }
+
+    private record DisplayAxes(Vec3 xAxis, Vec3 zAxis) {
+    }
+
+    private record DisplayRect(Vec3 min, Vec3 max) {
     }
 
 }

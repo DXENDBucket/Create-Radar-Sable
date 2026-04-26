@@ -4,6 +4,7 @@ import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.TrackCategory;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Position;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -41,10 +42,12 @@ public final class SableRadarCompat {
     private static Method getContainer;
     private static Method getContainerForLevel;
     private static Method getAllSubLevels;
+    private static Method getSubLevelByUuid;
     private static Method getAllIntersecting;
     private static Method projectOutOfSubLevel;
     private static Method getContaining;
     private static Method getVelocityAt;
+    private static Method getVelocityInSubLevel;
     private static Constructor<?> boundingBox3dFromAabb;
 
     private SableRadarCompat() {
@@ -72,6 +75,57 @@ public final class SableRadarCompat {
         }
 
         return position;
+    }
+
+    public static double projectYawToWorld(Level level, Vec3 localOrigin, double yawDegrees) {
+        double normalizedYaw = normalizeYaw(yawDegrees);
+        if (level == null || localOrigin == null || !isAvailable()) {
+            return normalizedYaw;
+        }
+
+        double yawRadians = Math.toRadians(normalizedYaw);
+        Vec3 localDirection = new Vec3(Math.sin(yawRadians), 0.0, Math.cos(yawRadians));
+        Vec3 worldDirection = projectDirectionToWorld(level, localOrigin, localDirection);
+
+        double horizontalLengthSqr = worldDirection.x * worldDirection.x + worldDirection.z * worldDirection.z;
+        if (horizontalLengthSqr < 1.0E-8) {
+            return normalizedYaw;
+        }
+
+        return normalizeYaw(Math.toDegrees(Math.atan2(worldDirection.x, worldDirection.z)));
+    }
+
+    public static Vec3 projectDirectionToWorld(Level level, Vec3 localOrigin, Vec3 localDirection) {
+        if (level == null || localOrigin == null || localDirection == null || !isAvailable()) {
+            return localDirection;
+        }
+
+        Vec3 worldOrigin = projectToWorld(level, localOrigin);
+        Vec3 worldTip = projectToWorld(level, localOrigin.add(localDirection));
+        return worldTip.subtract(worldOrigin);
+    }
+
+    public static Vec3 projectHorizontalDirectionToWorld(Level level, Vec3 localOrigin, Direction localDirection) {
+        Vec3 fallback = directionToHorizontalVector(localDirection);
+        Vec3 projected = projectDirectionToWorld(level, localOrigin, fallback);
+        Vec3 horizontal = new Vec3(projected.x, 0.0, projected.z);
+        double lengthSqr = horizontal.lengthSqr();
+        if (lengthSqr < 1.0E-8) {
+            return fallback;
+        }
+        return horizontal.scale(1.0 / Math.sqrt(lengthSqr));
+    }
+
+    private static Vec3 directionToHorizontalVector(Direction direction) {
+        if (direction == null) {
+            return Vec3.ZERO;
+        }
+        return new Vec3(direction.getStepX(), 0.0, direction.getStepZ());
+    }
+
+    private static double normalizeYaw(double yawDegrees) {
+        double normalized = yawDegrees % 360.0;
+        return normalized < 0.0 ? normalized + 360.0 : normalized;
     }
 
     public static boolean isInSubLevel(Level level, Vec3 localPosition) {
@@ -239,7 +293,7 @@ public final class SableRadarCompat {
         List<ServerPlayer> players = new ArrayList<>();
 
         try {
-            Object container = getContainer.invoke(null, level);
+            Object container = getContainer(level);
             if (container == null) {
                 return players;
             }
@@ -287,15 +341,11 @@ public final class SableRadarCompat {
         List<RadarTrack> tracks = new ArrayList<>();
 
         try {
-            Object container = getContainer.invoke(null, level);
-            if (container == null) {
-                return tracks;
-            }
-
+            Object container = getContainer(level);
             boolean sawCandidate = addSubLevelTracks(level, queryIntersectingSubLevels(level, scanBox), scanBox,
                     ignoredSubLevelId, positionFilter, scannedTime, tracks);
 
-            if (!sawCandidate) {
+            if (!sawCandidate && container != null && getAllSubLevels != null) {
                 Object all = getAllSubLevels.invoke(container);
                 if (all instanceof Iterable<?> subLevels) {
                     addSubLevelTracks(level, subLevels, scanBox, ignoredSubLevelId, positionFilter, scannedTime, tracks);
@@ -366,8 +416,12 @@ public final class SableRadarCompat {
         }
 
         try {
-            Object container = getContainer.invoke(null, level);
+            Object container = getContainer(level);
             if (container == null) {
+                return boxes;
+            }
+
+            if (getAllSubLevels == null) {
                 return boxes;
             }
 
@@ -484,11 +538,42 @@ public final class SableRadarCompat {
             return null;
         }
 
-        Vec3 velocity = getVelocity(level, rawPosition);
+        Vec3 velocity = getSubLevelVelocity(level, subLevel, position);
         float height = (float) Math.max(1.0, projectedBox == null ? getSubLevelHeight(subLevel) : projectedBox.getYsize());
         String name = getSubLevelName(subLevel);
 
         return RadarTrack.sableSubLevel(TRACK_ID_PREFIX + rawId, position, velocity, scannedTime, name, height);
+    }
+
+    private static Vec3 getSubLevelVelocity(Level level, Object subLevel, @Nullable Vec3 worldPosition) {
+        if (level == null || subLevel == null || worldPosition == null) {
+            return Vec3.ZERO;
+        }
+
+        if (getVelocityInSubLevel != null && isAvailable()) {
+            try {
+                Vec3 localPosition = projectWorldToSubLevelLocal(subLevel, worldPosition);
+                Object velocity = getVelocityInSubLevel.invoke(companion, level, subLevel, localPosition);
+                if (velocity instanceof Vec3 vec) {
+                    return vec.scale(SABLE_VELOCITY_TO_TICKS);
+                }
+            } catch (Throwable throwable) {
+                LOGGER.debug("Failed to resolve Sable sub-level velocity at {}", worldPosition, throwable);
+            }
+        }
+
+        return getVelocity(level, worldPosition);
+    }
+
+    private static Vec3 projectWorldToSubLevelLocal(Object subLevel, Vec3 worldPosition) throws ReflectiveOperationException {
+        Object pose = invokeNoArg(subLevel, "logicalPose");
+        if (pose == null) {
+            return worldPosition;
+        }
+
+        Method inverse = pose.getClass().getMethod("transformPositionInverse", Vec3.class);
+        Object local = inverse.invoke(pose, worldPosition);
+        return local instanceof Vec3 vec ? vec : worldPosition;
     }
 
     @Nullable
@@ -556,6 +641,10 @@ public final class SableRadarCompat {
     }
 
     public static Vec3 getVelocity(Level level, Vec3 position) {
+        if (level == null || position == null || getVelocityAt == null || !isAvailable()) {
+            return Vec3.ZERO;
+        }
+
         try {
             Object velocity = getVelocityAt.invoke(companion, level, position);
             if (velocity instanceof Vec3 vec) {
@@ -623,9 +712,23 @@ public final class SableRadarCompat {
 
     @Nullable
     private static Object getSubLevel(Level level, UUID uuid) {
+        Object container = getContainer(level);
+        if (container == null) {
+            return null;
+        }
+
         try {
-            Object container = getContainerForLevel != null ? getContainerForLevel.invoke(null, level) : getContainer.invoke(null, level);
-            if (container == null) {
+            if (getSubLevelByUuid != null) {
+                Object subLevel = getSubLevelByUuid.invoke(container, uuid);
+                if (subLevel != null) {
+                    return subLevel;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
+        try {
+            if (getAllSubLevels == null) {
                 return null;
             }
 
@@ -647,10 +750,34 @@ public final class SableRadarCompat {
     }
 
     @Nullable
+    private static Object getContainer(Level level) {
+        if (level == null || (getContainer == null && getContainerForLevel == null)) {
+            return null;
+        }
+
+        try {
+            if (level instanceof ServerLevel && getContainer != null) {
+                return getContainer.invoke(null, level);
+            }
+            if (getContainerForLevel != null) {
+                return getContainerForLevel.invoke(null, level);
+            }
+        } catch (Throwable throwable) {
+            LOGGER.debug("Failed to resolve Sable sub-level container for {}", level, throwable);
+        }
+
+        return null;
+    }
+
+    @Nullable
     private static String getContainingSubLevelIdFromBounds(ServerLevel level, Vec3 position) {
         try {
-            Object container = getContainer.invoke(null, level);
+            Object container = getContainer(level);
             if (container == null) {
+                return null;
+            }
+
+            if (getAllSubLevels == null) {
                 return null;
             }
 
@@ -887,31 +1014,76 @@ public final class SableRadarCompat {
         }
 
         try {
-            subLevelContainerClass = Class.forName("dev.ryanhcode.sable.api.sublevel.SubLevelContainer");
             Class<?> companionClass = Class.forName("dev.ryanhcode.sable.companion.SableCompanion");
-            Class<?> boundingBox3dcClass = Class.forName("dev.ryanhcode.sable.companion.math.BoundingBox3dc");
-            Class<?> boundingBox3dClass = Class.forName("dev.ryanhcode.sable.companion.math.BoundingBox3d");
 
             Field instance = companionClass.getField("INSTANCE");
             companion = instance.get(null);
 
-            getContainer = subLevelContainerClass.getMethod("getContainer", ServerLevel.class);
-            getContainerForLevel = subLevelContainerClass.getMethod("getContainer", Level.class);
-            getAllSubLevels = subLevelContainerClass.getMethod("getAllSubLevels");
-            getAllIntersecting = companionClass.getMethod("getAllIntersecting", Level.class, boundingBox3dcClass);
-            projectOutOfSubLevel = companionClass.getMethod("projectOutOfSubLevel", Level.class, Vec3.class);
-            getContaining = companionClass.getMethod("getContaining", Level.class, Position.class);
-            getVelocityAt = companionClass.getMethod("getVelocity", Level.class, Vec3.class);
-            boundingBox3dFromAabb = boundingBox3dClass.getConstructor(AABB.class);
+            projectOutOfSubLevel = findMethod(companionClass, "projectOutOfSubLevel",
+                    new Class<?>[]{Level.class, Position.class},
+                    new Class<?>[]{Level.class, Vec3.class});
+            getContaining = findMethod(companionClass, "getContaining",
+                    new Class<?>[]{Level.class, Position.class});
+            getVelocityAt = findMethod(companionClass, "getVelocity",
+                    new Class<?>[]{Level.class, Position.class},
+                    new Class<?>[]{Level.class, Vec3.class});
 
-            available = companion != null;
-            if (available) {
-                LOGGER.info("Sable radar compatibility enabled");
+            if (companion == null || projectOutOfSubLevel == null || getContaining == null) {
+                throw new NoSuchMethodException("Required Sable Companion methods are missing");
+            }
+
+            initializeCompanionQueryMethods(companionClass);
+            initializeContainerMethods();
+
+            available = true;
+            LOGGER.info("Sable radar compatibility enabled via {}", companion.getClass().getName());
+            if (getContainer == null && getContainerForLevel == null) {
+                LOGGER.debug("Sable SubLevelContainer methods are unavailable; radar will rely on Companion projections and entity queries");
             }
         } catch (Throwable throwable) {
             available = false;
             warnOnce("Sable is loaded, but radar compatibility could not initialize", throwable);
         }
+    }
+
+    private static void initializeCompanionQueryMethods(Class<?> companionClass) {
+        try {
+            Class<?> boundingBox3dcClass = Class.forName("dev.ryanhcode.sable.companion.math.BoundingBox3dc");
+            Class<?> boundingBox3dClass = Class.forName("dev.ryanhcode.sable.companion.math.BoundingBox3d");
+            Class<?> subLevelAccessClass = Class.forName("dev.ryanhcode.sable.companion.SubLevelAccess");
+
+            getAllIntersecting = findMethod(companionClass, "getAllIntersecting",
+                    new Class<?>[]{Level.class, boundingBox3dcClass});
+            getVelocityInSubLevel = findMethod(companionClass, "getVelocity",
+                    new Class<?>[]{Level.class, subLevelAccessClass, Position.class},
+                    new Class<?>[]{Level.class, subLevelAccessClass, Vec3.class});
+            boundingBox3dFromAabb = boundingBox3dClass.getConstructor(AABB.class);
+        } catch (Throwable throwable) {
+            LOGGER.debug("Sable Companion query helpers are unavailable", throwable);
+        }
+    }
+
+    private static void initializeContainerMethods() {
+        try {
+            subLevelContainerClass = Class.forName("dev.ryanhcode.sable.api.sublevel.SubLevelContainer");
+            getContainer = findMethod(subLevelContainerClass, "getContainer", new Class<?>[]{ServerLevel.class});
+            getContainerForLevel = findMethod(subLevelContainerClass, "getContainer", new Class<?>[]{Level.class});
+            getAllSubLevels = findMethod(subLevelContainerClass, "getAllSubLevels", new Class<?>[]{});
+            getSubLevelByUuid = findMethod(subLevelContainerClass, "getSubLevel", new Class<?>[]{UUID.class});
+        } catch (Throwable throwable) {
+            LOGGER.debug("Sable SubLevelContainer helpers are unavailable", throwable);
+        }
+    }
+
+    @Nullable
+    private static Method findMethod(Class<?> owner, String name, Class<?>[]... signatures) {
+        for (Class<?>[] signature : signatures) {
+            try {
+                return owner.getMethod(name, signature);
+            } catch (NoSuchMethodException ignored) {
+            }
+        }
+        return null;
     }
 
     private static void warnOnce(String message, Throwable throwable) {
