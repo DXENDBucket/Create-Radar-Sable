@@ -333,7 +333,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         if (!(level instanceof ServerLevel sl)) {
             return false;
         }
-        if (track.isSableSubLevel() && !SableRadarCompat.isTrackValid(sl, track)) {
+        if (track.isSableSubLevel() && !SableRadarCompat.isTrackWeaponTargetValid(sl, track)) {
             return false;
         }
 

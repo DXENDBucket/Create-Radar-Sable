@@ -19,6 +19,36 @@ import static net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING;
 //this is messy but couldn't figure out how to use Create MultiblockHelper
 //todo make better
 public class MonitorMultiBlockHelper {
+    public static boolean refreshAt(Level pLevel, BlockPos pPos) {
+        BlockState state = pLevel.getBlockState(pPos);
+        if (!state.is(ModBlocks.MONITOR.get()))
+            return false;
+
+        Direction facing = state.getValue(FACING);
+        Formation formation = findBestFormation(pLevel, pPos, facing);
+        if (formation == null || formation.size <= 1) {
+            return applySingle(pLevel, pPos, state);
+        }
+
+        return applyFormation(pLevel, formation);
+    }
+
+    public static boolean isValidFormationFor(Level level, BlockPos controller, Direction facing, int size, BlockPos member) {
+        if (size < 1)
+            return false;
+        if (!isValidFormation(level, controller, facing, size))
+            return false;
+
+        Direction right = facing.getClockWise();
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                if (controller.above(i).relative(right, j).equals(member))
+                    return true;
+            }
+        }
+        return false;
+    }
+
     public static void onPlace(BlockState pState, Level pLevel, BlockPos pPos, BlockState pOldState, boolean pIsMoving) {
         if (pState.getValue(SHAPE) != MonitorBlock.Shape.SINGLE && !pIsMoving)
             return;
@@ -69,6 +99,105 @@ public class MonitorMultiBlockHelper {
             }
         }
     }
+
+    private static boolean applyFormation(Level level, Formation formation) {
+        boolean changed = false;
+        Direction facing = formation.facing;
+        BlockPos controller = formation.controller;
+
+        for (int i = 0; i < formation.size; i++) {
+            for (int j = 0; j < formation.size; j++) {
+                BlockPos pos = controller.above(i).relative(facing.getClockWise(), j);
+                BlockState state = level.getBlockState(pos);
+                if (!state.is(ModBlocks.MONITOR.get()))
+                    continue;
+
+                MonitorBlock.Shape shape = shapeFor(i, j, formation.size);
+                if (state.getValue(SHAPE) != shape) {
+                    level.setBlockAndUpdate(pos, state.setValue(SHAPE, shape));
+                    changed = true;
+                }
+
+                if (level.getBlockEntity(pos) instanceof MonitorBlockEntity monitor) {
+                    if (!monitor.getControllerPos().equals(controller) || monitor.getSize() != formation.size) {
+                        monitor.setControllerPos(controller, formation.size);
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        return changed;
+    }
+
+    private static boolean applySingle(Level level, BlockPos pos, BlockState state) {
+        boolean changed = false;
+        if (state.getValue(SHAPE) != MonitorBlock.Shape.SINGLE) {
+            level.setBlockAndUpdate(pos, state.setValue(SHAPE, MonitorBlock.Shape.SINGLE));
+            changed = true;
+        }
+
+        if (level.getBlockEntity(pos) instanceof MonitorBlockEntity monitor) {
+            if (!monitor.getControllerPos().equals(pos) || monitor.getSize() != 1) {
+                monitor.setControllerPos(pos, 1);
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    private static Formation findBestFormation(Level level, BlockPos pos, Direction facing) {
+        Formation best = null;
+        Direction right = facing.getClockWise();
+        int maxSize = RadarConfig.server().monitorMaxSize.get();
+
+        for (int size = 1; size <= maxSize; size++) {
+            for (int i = 0; i < size; i++) {
+                for (int j = 0; j < size; j++) {
+                    BlockPos controller = pos.below(i).relative(right, -j);
+                    if (!isValidFormation(level, controller, facing, size))
+                        continue;
+
+                    if (best == null || size > best.size) {
+                        best = new Formation(controller, facing, size);
+                    }
+                }
+            }
+        }
+
+        return best;
+    }
+
+    private static boolean isValidFormation(Level level, BlockPos controller, Direction facing, int size) {
+        Direction right = facing.getClockWise();
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                BlockPos pos = controller.above(i).relative(right, j);
+                BlockState state = level.getBlockState(pos);
+                if (!state.is(ModBlocks.MONITOR.get()))
+                    return false;
+                if (state.getValue(FACING) != facing)
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    private static MonitorBlock.Shape shapeFor(int i, int j, int size) {
+        if (size <= 1) return MonitorBlock.Shape.SINGLE;
+        if (i == 0 && j == 0) return MonitorBlock.Shape.LOWER_RIGHT;
+        if (i == 0 && j == size - 1) return MonitorBlock.Shape.LOWER_LEFT;
+        if (i == size - 1 && j == 0) return MonitorBlock.Shape.UPPER_RIGHT;
+        if (i == size - 1 && j == size - 1) return MonitorBlock.Shape.UPPER_LEFT;
+        if (i == 0) return MonitorBlock.Shape.LOWER_CENTER;
+        if (i == size - 1) return MonitorBlock.Shape.UPPER_CENTER;
+        if (j == 0) return MonitorBlock.Shape.MIDDLE_RIGHT;
+        if (j == size - 1) return MonitorBlock.Shape.MIDDLE_LEFT;
+        return MonitorBlock.Shape.CENTER;
+    }
+
+    private record Formation(BlockPos controller, Direction facing, int size) {}
 
     private static void destroyMulti(BlockState pState, Level pLevel, BlockPos removedPos, BlockPos controllerPos, int size) {
         if (size == 1)

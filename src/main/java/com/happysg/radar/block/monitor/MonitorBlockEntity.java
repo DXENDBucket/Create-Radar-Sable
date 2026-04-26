@@ -96,6 +96,10 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 //        }
 
         if (!level.isClientSide && level instanceof ServerLevel sl) {
+            if (level.getGameTime() % 20 == 0) {
+                ensureValidMonitorMultiblock();
+            }
+
             if (level.getGameTime() % 5 == 0) {
                 syncFromNetwork(sl);
                 updateCacheServerOrClient();
@@ -158,6 +162,8 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 
 
     private void syncFromNetwork(ServerLevel sl) {
+        ensureValidMonitorMultiblock();
+
         NetworkData.Group g = getNetworkGroup(sl);
         if (g == null) {
             return;
@@ -393,6 +399,27 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         return controller;
     }
 
+    public boolean ensureValidMonitorMultiblock() {
+        if (level == null || level.isClientSide) {
+            return false;
+        }
+
+        BlockState state = getBlockState();
+        if (!state.is(com.happysg.radar.registry.ModBlocks.MONITOR.get())) {
+            return false;
+        }
+
+        BlockPos controllerPos = getControllerPos();
+        int size = Math.max(1, radius);
+        if (level.getBlockEntity(controllerPos) instanceof MonitorBlockEntity
+                && MonitorMultiBlockHelper.isValidFormationFor(level, controllerPos,
+                state.getValue(MonitorBlock.FACING), size, worldPosition)) {
+            return false;
+        }
+
+        return MonitorMultiBlockHelper.refreshAt(level, worldPosition);
+    }
+
 
     public int getSize() {
         return radius;
@@ -418,6 +445,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 
 
     public MonitorBlockEntity getController() {
+        ensureValidMonitorMultiblock();
         if (isController()) return this;
         if (level != null && level.getBlockEntity(controller) instanceof MonitorBlockEntity controllerBe)
             return controllerBe;

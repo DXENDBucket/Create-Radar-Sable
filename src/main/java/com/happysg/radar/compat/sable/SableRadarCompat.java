@@ -100,9 +100,49 @@ public final class SableRadarCompat {
             return localDirection;
         }
 
+        Vec3 poseDirection = projectDirectionWithContainingPose(level, localOrigin, localDirection);
+        if (poseDirection != null) {
+            return poseDirection;
+        }
+
         Vec3 worldOrigin = projectToWorld(level, localOrigin);
         Vec3 worldTip = projectToWorld(level, localOrigin.add(localDirection));
         return worldTip.subtract(worldOrigin);
+    }
+
+    @Nullable
+    private static Vec3 projectDirectionWithContainingPose(Level level, Vec3 localOrigin, Vec3 localDirection) {
+        if (getContaining == null) {
+            return null;
+        }
+
+        try {
+            Object subLevel = getContaining.invoke(companion, level, localOrigin);
+            Object pose = subLevel == null ? null : invokeNoArg(subLevel, "logicalPose");
+            if (pose == null) {
+                return null;
+            }
+
+            try {
+                Method transformNormal = pose.getClass().getMethod("transformNormal", Vec3.class);
+                Object transformed = transformNormal.invoke(pose, localDirection);
+                if (transformed instanceof Vec3 vec) {
+                    return vec;
+                }
+            } catch (NoSuchMethodException ignored) {
+            }
+
+            Method transformPosition = pose.getClass().getMethod("transformPosition", Vec3.class);
+            Object worldOrigin = transformPosition.invoke(pose, localOrigin);
+            Object worldTip = transformPosition.invoke(pose, localOrigin.add(localDirection));
+            if (worldOrigin instanceof Vec3 origin && worldTip instanceof Vec3 tip) {
+                return tip.subtract(origin);
+            }
+        } catch (Throwable throwable) {
+            LOGGER.debug("Failed to project Sable direction {} from {}", localDirection, localOrigin, throwable);
+        }
+
+        return null;
     }
 
     public static Vec3 projectHorizontalDirectionToWorld(Level level, Vec3 localOrigin, Direction localDirection) {
@@ -282,7 +322,74 @@ public final class SableRadarCompat {
         }
 
         Object subLevel = getSubLevel(level, uuid);
-        return isTrackableSubLevel(subLevel);
+        if (subLevel != null) {
+            return !isRemoved(subLevel);
+        }
+
+        return !canVerifySubLevelByUuid(level);
+    }
+
+    public static boolean isTrackWeaponTargetValid(ServerLevel level, @Nullable RadarTrack track) {
+        if (level == null || !isSableTrack(track) || !isAvailable()) {
+            return false;
+        }
+
+        UUID uuid = getTrackSubLevelUuid(track);
+        if (uuid == null) {
+            return false;
+        }
+
+        Object subLevel = getSubLevel(level, uuid);
+        if (subLevel != null) {
+            return isTrackableSubLevel(subLevel);
+        }
+
+        if (canVerifySubLevelByUuid(level)) {
+            return false;
+        }
+
+        return isTrackPresentNearPosition(level, uuid, track);
+    }
+
+    private static boolean isTrackPresentNearPosition(ServerLevel level, UUID uuid, RadarTrack track) {
+        Vec3 position = track.position();
+        if (position == null) {
+            return false;
+        }
+
+        Vec3 velocity = track.velocity();
+        if (velocity == null) {
+            velocity = Vec3.ZERO;
+        }
+
+        double ageTicks = Math.max(0L, level.getGameTime() - track.scannedTime());
+        double movementPadding = Math.sqrt(velocity.lengthSqr()) * ageTicks;
+        double baseRadius = Math.max(8.0, track.getEnityHeight() * 0.5 + 4.0);
+        double radius = baseRadius + movementPadding + 2.0;
+        AABB queryBox = new AABB(
+                position.x - radius, position.y - radius, position.z - radius,
+                position.x + radius, position.y + radius, position.z + radius
+        );
+
+        Iterable<?> candidates = queryIntersectingSubLevels(level, queryBox);
+        if (candidates == null) {
+            return false;
+        }
+
+        for (Object candidate : candidates) {
+            if (uuid.equals(getSubLevelUuid(candidate))) {
+                return isTrackableSubLevel(candidate);
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean canVerifySubLevelByUuid(Level level) {
+        if (level == null || (getSubLevelByUuid == null && getAllSubLevels == null)) {
+            return false;
+        }
+        return getContainer(level) != null;
     }
 
     public static List<ServerPlayer> getTrackingPlayers(ServerLevel level, BlockPos pos) {

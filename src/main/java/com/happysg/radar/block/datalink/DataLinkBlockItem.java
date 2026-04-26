@@ -493,6 +493,7 @@ public class DataLinkBlockItem extends BlockItem {
 
         BlockEntity be = level.getBlockEntity(clickedPos);
         if (be instanceof MonitorBlockEntity monitor) {
+            monitor.ensureValidMonitorMultiblock();
             BlockPos controllerPos = monitor.getControllerPos();
             if (controllerPos != null) {
                 return controllerPos;

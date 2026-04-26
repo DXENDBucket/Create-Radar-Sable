@@ -704,7 +704,7 @@ public class WeaponFiringControl {
         if (!(level instanceof ServerLevel serverLevel)) return;
 
         if (!binoMode && isTrackStateTarget(activetrack)
-                && !SableRadarCompat.isTrackValid(serverLevel, activetrack)) {
+                && !SableRadarCompat.isTrackWeaponTargetValid(serverLevel, activetrack)) {
             LOGGER.debug("Sable target is no longer valid; stopping fire (trackId={})", activetrack.getId());
             resetTarget();
             return;
