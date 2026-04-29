@@ -1,4 +1,4 @@
-﻿{
+{
     "block.create_radar.arad_guidance":  "反雷达制导单元",
     "block.create_radar.auto_pitch_controller":  "自动俯仰控制器",
     "block.create_radar.auto_yaw_controller":  "自动偏航控制器",

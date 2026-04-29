@@ -1,0 +1,72 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": {
+    "item": "create_radar:data_link"
+  },
+  "loops": 1,
+  "results": [
+    {
+      "chance": 120,
+      "id": "create_radar:network_filterer"
+    },
+    {
+      "id": "create_radar:data_link"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "create_radar:incomplete_network_controller"
+        },
+        {
+          "tag": "c:plates/gold"
+        }
+      ],
+      "results": [
+        {
+          "id": "create_radar:incomplete_network_controller"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "create_radar:incomplete_network_controller"
+        },
+        {
+          "item": "create:electron_tube"
+        }
+      ],
+      "results": [
+        {
+          "id": "create_radar:incomplete_network_controller"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "create_radar:incomplete_network_controller"
+        }
+      ],
+      "results": [
+        {
+          "id": "create_radar:incomplete_network_controller"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "create_radar:incomplete_network_controller"
+  },
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "create_radar:incomplete_network_controller"
+    }
+  ]
+}
