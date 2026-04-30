@@ -77,6 +77,9 @@ public class ModCreativeTabs {
         pOutput.accept(ModItems.BINOCULARS, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
 
 
+        if (Mods.CREATEBIGCANNONS.isLoaded() && CBCCompatRegister.GUIDED_FUZE != null) {
+            pOutput.accept(CBCCompatRegister.GUIDED_FUZE, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        }
 
         if (Mods.CBCMODERNWARFARE.isLoaded()) {
             pOutput.accept(CBCMWCompatRegister.RADAR_GUIDANCE_BLOCK, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);

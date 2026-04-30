@@ -2,6 +2,7 @@ package com.happysg.radar.block.controller.networkcontroller;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.behavior.networks.NetworkData;
+import com.happysg.radar.item.GuidedFuzeItem;
 import com.happysg.radar.item.binos.Binoculars;
 import com.happysg.radar.registry.ModBlockEntityTypes;
 import com.happysg.radar.registry.ModBlocks;
@@ -162,6 +163,9 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
     protected @NotNull ItemInteractionResult useItemOn(ItemStack held, BlockState state, Level world, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         if (held.is(ModItems.BINOCULARS.asItem())) {
             return ItemInteractionResult.SUCCESS;
+        }
+        if (held.getItem() instanceof GuidedFuzeItem) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
 
         if (world.isClientSide) {

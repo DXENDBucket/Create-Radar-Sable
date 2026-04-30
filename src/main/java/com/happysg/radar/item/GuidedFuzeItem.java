@@ -52,7 +52,14 @@ public class GuidedFuzeItem extends FuzeItem {
         if (!tag.contains("monitorPos"))
             return detonate;
 
-        Vec3 vel = projectile.getDeltaMovement();
+        Level projectileLevel = projectile.level();
+        Vec3 localProjectilePos = projectile.position();
+        Vec3 projectilePos = SableRadarCompat.projectToWorld(projectileLevel, localProjectilePos);
+        Vec3 localVel = projectile.getDeltaMovement();
+        Vec3 vel = SableRadarCompat.projectDirectionToWorld(projectileLevel, localProjectilePos, localVel);
+        if (vel.lengthSqr() < 1.0E-8) {
+            vel = localVel;
+        }
 
         // i only start guidance after the projectile has passed the apex and is descending
         if (vel.y > 0 && !RadarConfig.server().guidedFuzeSeekBeforeApex.get())
@@ -70,7 +77,6 @@ public class GuidedFuzeItem extends FuzeItem {
         Vec3 target = monitor.activeTrackCache.getPosition();
         if (target == null)
             return detonate;
-        Vec3 projectilePos = SableRadarCompat.projectToWorld(projectile.level(), projectile.position());
 
         // --- store initial heading at the top of the arc (first descending tick) ---
         if (!tag.contains("initialHeadingYaw")) {
@@ -128,9 +134,25 @@ public class GuidedFuzeItem extends FuzeItem {
             newDir = rotateAroundAxis(currentDir, axis, maxTurnRad);
         }
 
-        projectile.setDeltaMovement(newDir.scale(speed));
+        setProjectileWorldVelocity(projectile, localProjectilePos, projectilePos, newDir.scale(speed));
         ItemNbt.setTag(stack, tag);
         return detonate;
+    }
+
+    private static void setProjectileWorldVelocity(AbstractCannonProjectile projectile, Vec3 localPosition,
+                                                   Vec3 worldPosition, Vec3 worldVelocity) {
+        Vec3 localTip = SableRadarCompat.projectWorldToLocal(
+                projectile.level(),
+                localPosition,
+                worldPosition.add(worldVelocity)
+        );
+        Vec3 localVelocity = localTip.subtract(localPosition);
+
+        if (localVelocity.lengthSqr() < 1.0E-8) {
+            localVelocity = worldVelocity;
+        }
+
+        projectile.setDeltaMovement(localVelocity);
     }
 
     private static double yawFromHorizontal(Vec3 v) {
