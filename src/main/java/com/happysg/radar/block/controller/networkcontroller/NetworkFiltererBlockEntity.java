@@ -414,14 +414,24 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     public void onBinocularsTriggered(Player player, ItemStack binos, boolean reset) {
         if (!(level instanceof ServerLevel serverLevel)) return;
 
-        BlockPos targetpos = Binoculars.getLastHit(binos);
-        if(targetpos == null) return;
-        //RadarTrack faketrack = new RadarTrack("binotarget", targetpos.getCenter(), Vec3.ZERO,10, TrackCategory.MISC,"misc",1);
         TargetingConfig cfg = targeting != null ? targeting : TargetingConfig.DEFAULT;
 
         List<AutoPitchControllerBlockEntity> entities = getWeaponEndpointBlockEntities();
+        if (reset) {
+            for (AutoPitchControllerBlockEntity pitch : entities) {
+                pitch.setAndAcquirePos((Vec3) null, cfg, true);
+                pitch.setSafeZones(safeZones);
+            }
+            selectedWasAuto = false;
+            return;
+        }
+
+        Vec3 targetPos = Binoculars.getLastHitVec(binos);
+        if(targetPos == null) return;
+        //RadarTrack faketrack = new RadarTrack("binotarget", targetPos, Vec3.ZERO,10, TrackCategory.MISC,"misc",1);
+
         for (AutoPitchControllerBlockEntity pitch : entities) {
-            pitch.setAndAcquirePos(targetpos, cfg,reset);
+            pitch.setAndAcquirePos(targetPos, cfg,reset);
             pitch.setSafeZones(safeZones);
         }
 

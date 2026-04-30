@@ -5,6 +5,8 @@
   "plugin": "com.happysg.radar.mixin.CreateRadarMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "ConfigSubMenuEntryMixin",
+    "ConfigValueEntryMixin"
   ],
   "mixins": [
     "AbstractCannonAccessor",

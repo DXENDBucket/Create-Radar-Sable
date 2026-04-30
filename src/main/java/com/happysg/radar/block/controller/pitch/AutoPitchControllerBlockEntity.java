@@ -257,6 +257,11 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     }
 
     public void setAndAcquirePos(@Nullable BlockPos binoTargetPos, TargetingConfig config, boolean reset) {
+        Vec3 target = binoTargetPos == null ? null : SableRadarCompat.projectToWorld(level, binoTargetPos.getCenter());
+        setAndAcquirePos(target, config, reset);
+    }
+
+    public void setAndAcquirePos(@Nullable Vec3 binoTargetPos, TargetingConfig config, boolean reset) {
         if (level == null || level.isClientSide) {
             return;
         }

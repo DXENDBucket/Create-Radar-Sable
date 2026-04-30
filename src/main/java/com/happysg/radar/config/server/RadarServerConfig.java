@@ -1,8 +1,8 @@
 package com.happysg.radar.config.server;
 
-import net.createmod.catnip.config.ConfigBase;
+import com.happysg.radar.config.LocalizedConfigBase;
 
-public class RadarServerConfig extends ConfigBase {
+public class RadarServerConfig extends LocalizedConfigBase {
     @Override
     public String getName() {
         return "Radar Server";

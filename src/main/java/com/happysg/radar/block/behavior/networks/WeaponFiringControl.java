@@ -54,7 +54,7 @@ public class WeaponFiringControl {
     public final Level level;
     private RadarTrack activetrack;
     private Entity targetEntity;
-    private BlockPos binoTargetPos;
+    private Vec3 binoTarget;
     private boolean binoMode;
     @Nullable private Vec3 lastAimPoint = null;
 
@@ -599,7 +599,7 @@ public class WeaponFiringControl {
     public void clearBinoTarget() {
         visCache.clear();
         this.binoMode = false;
-        this.binoTargetPos = null;
+        this.binoTarget = null;
         this.target = null;
         this.activetrack = null;
 
@@ -736,9 +736,9 @@ public class WeaponFiringControl {
             target = SableRadarCompat.projectEntityPosition(targetEntity);
             targetVel = VelocityTracker.getEstimatedVelocityPerTick(targetEntity);
             targetAccel = AccelerationTracker.getAccelerationPerTick2(targetEntity.getUUID(),targetVel);
-        }else if(binoMode && binoTargetPos != null){
+        }else if(binoMode && binoTarget != null){
 
-            target = SableRadarCompat.projectToWorld(level, binoTargetPos.getCenter());
+            target = binoTarget;
             targetVel = Vec3.ZERO;
             targetAccel = Vec3.ZERO;
         }else{
@@ -939,6 +939,12 @@ public class WeaponFiringControl {
 
     public void setBinoTarget(@Nullable BlockPos binoTarget, TargetingConfig config,
                               WeaponNetworkData.WeaponGroupView view, boolean reset) {
+        Vec3 target = binoTarget == null ? null : SableRadarCompat.projectToWorld(level, binoTarget.getCenter());
+        setBinoTarget(target, config, view, reset);
+    }
+
+    public void setBinoTarget(@Nullable Vec3 binoTarget, TargetingConfig config,
+                              WeaponNetworkData.WeaponGroupView view, boolean reset) {
 
         this.view = view;
         this.targetingConfig = config;
@@ -946,14 +952,14 @@ public class WeaponFiringControl {
 
         if (reset || binoTarget == null) {
             this.binoMode = false;
-            this.binoTargetPos = null;
+            this.binoTarget = null;
             this.target = null;
             stopFireCannon();
             return;
         }
 
         this.binoMode = true;
-        this.binoTargetPos = binoTarget.immutable();
+        this.binoTarget = binoTarget;
         if (level != null) this.lastTargetTick = level.getGameTime();
     }
 

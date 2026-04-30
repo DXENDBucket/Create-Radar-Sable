@@ -7,7 +7,6 @@ import com.happysg.radar.utils.ItemNbt;
 import com.happysg.radar.utils.NbtCompat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -16,6 +15,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import javax.annotation.Nullable;
@@ -48,8 +48,8 @@ public class FirePacket implements CustomPacketPayload {
 
            // if (!player.isUsingItem()) return;
 
-            ItemStack binos = player.getMainHandItem();
-            if (!(binos.getItem() instanceof Binoculars)) return;
+            ItemStack binos = findBinosStack(player);
+            if (binos.isEmpty()) return;
 
             BlockPos filtererPos = getFiltererPos(binos);
             if (filtererPos == null) return;
@@ -58,7 +58,7 @@ public class FirePacket implements CustomPacketPayload {
             if (!(serverLevel.getBlockEntity(filtererPos) instanceof NetworkFiltererBlockEntity filtererBe)) return;
 
             if (msg.enable) {
-                BlockPos hit = Binoculars.getLastHit(binos);
+                Vec3 hit = Binoculars.getLastHitVec(binos);
                 if (hit == null) return;
                 filtererBe.onBinocularsTriggered(player,binos, false);
 
