@@ -10,6 +10,7 @@ import net.createmod.ponder.api.scene.SceneBuildingUtil;
 import net.createmod.ponder.api.scene.Selection;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -234,6 +235,18 @@ public class PonderScenes {
                 .colored(PonderPalette.OUTPUT)
                 .placeNearTarget();
         scene.idle(50);
+        BlockPos repeater = util.grid().at(3, 4, 2);
+        Selection repeaterSelection = util.select().position(repeater);
+        scene.world().setBlock(repeater, Blocks.REPEATER.defaultBlockState(), false);
+        scene.world().showSection(repeaterSelection, Direction.DOWN);
+        scene.overlay().showText(80)
+                .text("Place a Redstone Repeater on top to make the Fire Controller pulse. The repeater delay controls the firing interval")
+                .pointAt(repeater.getCenter())
+                .attachKeyFrame()
+                .colored(PonderPalette.INPUT)
+                .placeNearTarget();
+        scene.overlay().showRepeaterScrollInput(repeater, 80);
+        scene.idle(90);
         scene.rotateCameraY(90);
         scene.overlay().chaseBoundingBoxOutline(PonderPalette.INPUT, cannonMount, new AABB(new BlockPos(2,3,2)), 60);
         scene.overlay().chaseBoundingBoxOutline(PonderPalette.OUTPUT, link3, new AABB(new BlockPos (3,3,3)).contract(0, 0, .5f), 60);
